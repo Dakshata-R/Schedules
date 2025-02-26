@@ -11,7 +11,7 @@ import {
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import PersonIcon from "@mui/icons-material/Person";
 
-const Personal = () => {
+const Personal = ({ onUpdate }) => {
   const [formData, setFormData] = useState({
     studentId: "",
     name: "",
@@ -31,7 +31,9 @@ const Personal = () => {
   const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    onUpdate({ [name]: value });
   };
 
   const handleImageUpload = (e, type) => {
@@ -39,10 +41,13 @@ const Personal = () => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
+        const imageData = reader.result; // Base64 string
         if (type === "profile") {
-          setFormData({ ...formData, profileImage: file });
+          setFormData({ ...formData, profileImage: imageData });
+          onUpdate({ profileImage: imageData });
         } else {
-          setFormData({ ...formData, coverImage: file });
+          setFormData({ ...formData, coverImage: imageData });
+          onUpdate({ coverImage: imageData });
         }
       };
       reader.readAsDataURL(file);
@@ -66,8 +71,7 @@ const Personal = () => {
 
   const handleSubmit = () => {
     if (validateForm()) {
-      // Handle form submission
-      console.log("Form Data:", formData);
+      onUpdate(formData);
     }
   };
 
@@ -149,13 +153,6 @@ const Personal = () => {
             error={!!errors.dob}
             helperText={errors.dob}
             sx={{ mb: 2, backgroundColor: "#f5f5f5" }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <PersonIcon />
-                </InputAdornment>
-              ),
-            }}
           />
           <Typography variant="body2" color="textSecondary" mb={2}>
             Enter your date of birth in the format DD/MM/YYYY.
@@ -179,14 +176,7 @@ const Personal = () => {
                 error={!!errors.age}
                 helperText={errors.age}
                 sx={{ mb: 2, backgroundColor: "#f5f5f5" }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <PersonIcon />
-                    </InputAdornment>
-                  ),
-                  inputProps: { min: 0 },
-                }}
+                inputProps={{ min: 0 }}
               />
               <Typography variant="body2" color="textSecondary" mb={2}>
                 Enter your current age in years.
@@ -208,13 +198,6 @@ const Personal = () => {
                 error={!!errors.bloodGroup}
                 helperText={errors.bloodGroup}
                 sx={{ mb: 2, backgroundColor: "#f5f5f5" }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <PersonIcon />
-                    </InputAdornment>
-                  ),
-                }}
               >
                 {["O +ve", "O -ve", "A +ve", "A -ve", "B +ve", "B -ve", "AB +ve", "AB -ve"].map((group) => (
                   <MenuItem key={group} value={group}>
@@ -246,14 +229,7 @@ const Personal = () => {
                 error={!!errors.weight}
                 helperText={errors.weight}
                 sx={{ mb: 2, backgroundColor: "#f5f5f5" }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <PersonIcon />
-                    </InputAdornment>
-                  ),
-                  inputProps: { min: 0 },
-                }}
+                inputProps={{ min: 0 }}
               />
               <Typography variant="body2" color="textSecondary" mb={2}>
                 Enter your weight in kilograms (kg).
@@ -275,14 +251,7 @@ const Personal = () => {
                 error={!!errors.height}
                 helperText={errors.height}
                 sx={{ mb: 2, backgroundColor: "#f5f5f5" }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <PersonIcon />
-                    </InputAdornment>
-                  ),
-                  inputProps: { min: 0 },
-                }}
+                inputProps={{ min: 0 }}
               />
               <Typography variant="body2" color="textSecondary" mb={2}>
                 Enter your height in centimeters (cm).
@@ -310,13 +279,6 @@ const Personal = () => {
             error={!!errors.fatherName}
             helperText={errors.fatherName}
             sx={{ mb: 2, backgroundColor: "#f5f5f5" }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <PersonIcon />
-                </InputAdornment>
-              ),
-            }}
           />
           <Typography variant="body2" color="textSecondary" mb={2}>
             Enter your father's full name.
@@ -336,13 +298,6 @@ const Personal = () => {
             margin="none"
             placeholder="Select your father's occupation"
             sx={{ mb: 2, backgroundColor: "#f5f5f5" }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <PersonIcon />
-                </InputAdornment>
-              ),
-            }}
           >
             {["Business man", "Engineer", "Doctor", "Teacher", "Other"].map((job) => (
               <MenuItem key={job} value={job}>
@@ -369,13 +324,6 @@ const Personal = () => {
             error={!!errors.motherName}
             helperText={errors.motherName}
             sx={{ mb: 2, backgroundColor: "#f5f5f5" }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <PersonIcon />
-                </InputAdornment>
-              ),
-            }}
           />
           <Typography variant="body2" color="textSecondary" mb={2}>
             Enter your mother's full name.
@@ -395,13 +343,6 @@ const Personal = () => {
             margin="none"
             placeholder="Select your mother's occupation"
             sx={{ mb: 2, backgroundColor: "#f5f5f5" }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <PersonIcon/>
-                </InputAdornment>
-              ),
-            }}
           >
             {["House wife", "Engineer", "Doctor", "Teacher", "Other"].map((job) => (
               <MenuItem key={job} value={job}>
@@ -435,7 +376,7 @@ const Personal = () => {
           >
             {formData.profileImage ? (
               <img
-                src={URL.createObjectURL(formData.profileImage)}
+                src={formData.profileImage}
                 alt="Profile Preview"
                 style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "12px" }}
               />
@@ -458,6 +399,11 @@ const Personal = () => {
           </Box>
         </Grid>
       </Grid>
+
+      {/* Save & Next Button */}
+      <Button variant="contained" color="primary" onClick={handleSubmit} sx={{ mt: 2 }}>
+        Save & Next
+      </Button>
     </Box>
   );
 };

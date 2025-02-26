@@ -20,8 +20,7 @@ const Users = () => {
     { id: "roles", label: "Roles", icon: <GroupsIcon fontSize="small" /> },
     { id: "infrastructure", label: "Infrastructure", icon: <ApartmentIcon fontSize="small" /> },
     { id: "schedules", label: "Schedules", icon: <EventIcon fontSize="small" /> },
-    { id: "additional", label: "Additional", icon: <EventIcon fontSize="small" /> },
-    { id: "classadvisor", label: "Class Advisor", icon: <EventIcon fontSize="small" /> }, // New tab
+    
   ];
 
   return (

@@ -6,7 +6,7 @@ import Academic from "./academics";
 import Communication from "./communication";
 import Health from "./health";
 import Additional from "./additional";
-import ClassAdvisor from "./classadvisor"; // Import the ClassAdvisor component
+import ClassAdvisor from "./classadvisor";
 
 const steps = [
   { id: "personal", label: "Personal" },
@@ -45,17 +45,22 @@ const UserInput = () => {
       setActiveStep(activeStep + 1);
     } else {
       try {
+        // Combine all form data before sending to the backend
+        const combinedData = {
+          ...formData, // Contains personal, academic, and other data
+        };
+
         // Send all form data to the backend
         const response = await fetch("http://localhost:5000/api/save-student", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(combinedData),
         });
-  
+
         if (response.ok) {
-          console.log("Final Save:", formData);
+          console.log("Final Save:", combinedData);
           alert("Student data saved successfully!");
         } else {
           alert("Failed to save student data.");
@@ -72,7 +77,7 @@ const UserInput = () => {
   };
 
   const handleUpdate = (data) => {
-    setFormData({ ...formData, ...data });
+    setFormData((prevData) => ({ ...prevData, ...data }));
   };
 
   return (
@@ -110,7 +115,7 @@ const UserInput = () => {
         {activeStep === 0 && <Personal onUpdate={handleUpdate} />}
         {activeStep === 1 && <Academic onUpdate={handleUpdate} />}
         {activeStep === 2 && <Communication onUpdate={handleUpdate} />}
-        {activeStep === 3 && <ClassAdvisor onUpdate={handleUpdate} />} {/* Replace with ClassAdvisor */}
+        {activeStep === 3 && <ClassAdvisor onUpdate={handleUpdate} />}
         {activeStep === 4 && <Health onUpdate={handleUpdate} />}
         {activeStep === 5 && <Additional onUpdate={handleUpdate} />}
       </Box>
