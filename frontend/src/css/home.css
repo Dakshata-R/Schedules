@@ -1,0 +1,11 @@
+.sidebar-icon {
+    color: #6b7280; /* Gray */
+  }
+  
+  .active-icon {
+    background-color: #006d5b; /* Dark Green */
+    padding: 10px;
+    border-radius: 10px;
+    color: white;
+  }
+  
