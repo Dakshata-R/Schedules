@@ -63,7 +63,8 @@ const UserInput = () => {
           console.log("Final Save:", combinedData);
           alert("Student data saved successfully!");
         } else {
-          alert("Failed to save student data.");
+          const errorData = await response.json();
+          alert(`Failed to save student data: ${errorData.message || "Unknown error"}`);
         }
       } catch (error) {
         console.error("Error saving final form data:", error);

@@ -12,7 +12,6 @@ import {
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf"; // Red PDF icon
 import SchoolIcon from "@mui/icons-material/School";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 
 const Academic = ({ onUpdate }) => {
   const [formData, setFormData] = useState({
@@ -41,13 +40,6 @@ const Academic = ({ onUpdate }) => {
       setFormData({ ...formData, uploadedFile: file });
       onUpdate({ uploadedFile: file });
     }
-  };
-
-  const handleAddImage = () => {
-    // Logic to handle adding another document
-    setFormData({ ...formData, uploadedFile: null }); // Reset the uploaded file
-    onUpdate({ uploadedFile: null });
-    alert("Add another document in the same format.");
   };
 
   const validateForm = () => {
