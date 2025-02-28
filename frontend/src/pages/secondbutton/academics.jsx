@@ -56,9 +56,54 @@ const Academic = ({ onUpdate }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (validateForm()) {
-      onUpdate(formData);
+      const formDataToSend = new FormData();
+      formDataToSend.append("studentId", "12345"); // Example student ID
+      formDataToSend.append("name", "John Doe"); // Example name
+      formDataToSend.append("dob", "2000-01-01"); // Example DOB
+      formDataToSend.append("age", 23); // Example age
+      formDataToSend.append("bloodGroup", "O+"); // Example blood group
+      formDataToSend.append("weight", 70); // Example weight
+      formDataToSend.append("height", 175); // Example height
+      formDataToSend.append("fatherName", "John Doe Sr."); // Example father's name
+      formDataToSend.append("motherName", "Jane Doe"); // Example mother's name
+      formDataToSend.append("fatherOccupation", "Engineer"); // Example father's occupation
+      formDataToSend.append("motherOccupation", "Teacher"); // Example mother's occupation
+      formDataToSend.append("profileImage", "profile.jpg"); // Example profile image
+      formDataToSend.append("coverImage", "cover.jpg"); // Example cover image
+      formDataToSend.append("school", formData.school);
+      formDataToSend.append("tenthMarks", formData.tenthMarks);
+      formDataToSend.append("tenthPercent", formData.tenthPercent);
+      formDataToSend.append("twelfthMarks", formData.twelfthMarks);
+      formDataToSend.append("twelfthPercent", formData.twelfthPercent);
+      formDataToSend.append("schoolMedium", formData.schoolMedium);
+      formDataToSend.append("department", formData.department);
+      formDataToSend.append("semesterGrade", formData.semesterGrade);
+      if (formData.uploadedFile) {
+        formDataToSend.append("uploadedFile", formData.uploadedFile);
+      }
+
+      // Debugging: Log form data being sent
+      for (let [key, value] of formDataToSend.entries()) {
+        console.log(key, value);
+      }
+
+      try {
+        const response = await fetch("http://localhost:5000/api/save-student", {
+          method: "POST",
+          body: formDataToSend, // Send as multipart/form-data
+        });
+
+        if (response.ok) {
+          alert("Academic data saved successfully!");
+        } else {
+          alert("Failed to save academic data.");
+        }
+      } catch (error) {
+        console.error("Error saving academic data:", error);
+        alert("An error occurred while saving the data.");
+      }
     }
   };
 
@@ -322,7 +367,7 @@ const Academic = ({ onUpdate }) => {
               >
                 <CloudUploadIcon sx={{ fontSize: 30, color: "green", mr: 1 }} />
                 <Typography variant="body1">Upload pdf</Typography>
-                <input type="file" hidden onChange={handleFileUpload} />
+                <input type="file" name="uploadedFile" hidden onChange={handleFileUpload} />
               </Button>
             </Box>
 
