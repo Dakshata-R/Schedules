@@ -123,7 +123,9 @@ const UserInput = () => {
 
       {/* Navigation Buttons */}
       <Box sx={{ display: "flex", justifyContent: "space-between", marginTop: "20px" }}>
-        <Button variant="contained" onClick={handleBack} disabled={activeStep === 0}>
+        <Button variant="contained" 
+        sx={{ backgroundColor: "green !important", color: "white", '&:hover': { backgroundColor: "darkgreen !important" } }}
+        onClick={handleBack} disabled={activeStep === 0 }>
           Back
         </Button>
         {activeStep === steps.length - 1 ? (
@@ -131,8 +133,10 @@ const UserInput = () => {
             Save
           </Button>
         ) : (
-          <Button variant="contained" color="primary" onClick={handleNext}>
-            Save & Next
+          <Button variant="contained" 
+          sx={{ backgroundColor: "green !important", color: "white", '&:hover': { backgroundColor: "darkgreen !important" } }}
+          color="primary" onClick={handleNext}>
+            Next
           </Button>
         )}
       </Box>

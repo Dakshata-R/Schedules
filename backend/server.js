@@ -1,86 +1,45 @@
 const express = require('express');
-const mysql = require('mysql');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const db = require('./config/db'); // Ensure this is correctly pointing to db.js
+const path = require('path');
 
 const app = express();
+
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-// MySQL Connection
-const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: 'sandhiya',
-  database: 'student_db'
-});
+// Serve static files if needed
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads_academic', express.static(path.join(__dirname, 'uploads_academic')));
 
-db.connect((err) => {
-  if (err) {
-    console.error('Error connecting to MySQL:', err);
-    return;
-  }
-  console.log('Connected to MySQL database');
-});
+// Import existing routes
+const personalRoutes = require('./routes/personalRoutes');
+app.use('/api', personalRoutes);
 
-// API to save student data
-app.post('/api/save-student', (req, res) => {
-  const {
-    studentId, name, dob, age, bloodGroup, weight, height,
-    fatherName, motherName, fatherOccupation, motherOccupation,
-    profileImage, coverImage,
-    school, department, schoolMedium, tenthMarks, tenthPercent,
-    twelfthMarks, twelfthPercent, semesterGrade, uploadedFile
-  } = req.body;
+const academicRoutes = require('./routes/academicRoutes');
+app.use('/api', academicRoutes);
 
-  // Insert into students table
-  const studentSql = `
-    INSERT INTO students (
-      studentId, name, dob, age, bloodGroup, weight, height,
-      fatherName, motherName, fatherOccupation, motherOccupation,
-      profileImage, coverImage
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
+const communicationRoutes = require('./routes/communicationRoutes');
+app.use('/api', communicationRoutes);
 
-  const studentValues = [
-    studentId, name, dob, age, bloodGroup, weight, height,
-    fatherName, motherName, fatherOccupation, motherOccupation,
-    profileImage, coverImage
-  ];
+const advisorRoutes = require('./routes/advisorRoutes');
+app.use('/api', advisorRoutes);
 
-  db.query(studentSql, studentValues, (err, studentResult) => {
-    if (err) {
-      console.error('Error saving student data:', err);
-      res.status(500).send('Error saving student data');
-      return;
+const healthRoutes = require('./routes/healthRoutes');
+app.use('/api', healthRoutes);
+
+const additionalRoutes = require('./routes/additionalRoutes');
+app.use('/api', additionalRoutes);
+
+app._router.stack.forEach((r) => {
+    if (r.route && r.route.path) {
+        console.log(r.route.path);
     }
-
-    // Insert into academic_details table
-    const academicSql = `
-      INSERT INTO academic_details (
-        studentId, school, department, schoolMedium, tenthMarks, tenthPercent,
-        twelfthMarks, twelfthPercent, semesterGrade, documentPath
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    const academicValues = [
-      studentId, school, department, schoolMedium, tenthMarks, tenthPercent,
-      twelfthMarks, twelfthPercent, semesterGrade, uploadedFile ? uploadedFile.name : null
-    ];
-
-    db.query(academicSql, academicValues, (err, academicResult) => {
-      if (err) {
-        console.error('Error saving academic data:', err);
-        res.status(500).send('Error saving academic data');
-        return;
-      }
-
-      res.status(200).send('Student and academic data saved successfully');
-    });
-  });
 });
 
 const PORT = 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
 });
