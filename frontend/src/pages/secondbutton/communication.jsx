@@ -12,24 +12,52 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import PersonIcon from "@mui/icons-material/Person";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
-const Communication = ({ onUpdate }) => {
+
+
+const Communication = ({ onUpdate3 }) => {
   const [formData, setFormData] = useState({
-    mobile1: "1234567890",
-    mobile2: "1234567890",
-    personalEmail: "abc@bitsathy.ac.in",
-    officialEmail: "abc@bitsathy.ac.in",
-    location: "Rural",
-    currentAddress: "type here..",
-    permanentAddress: "type here...",
+    mobile1: "",
+    mobile2: "",
+    personalEmail: "",
+    officialEmail: "",
+    location: "",
+    currentAddress: "",
+    permanentAddress: "",
   });
+
+  const [saved, setSaved] = useState(false); // ✅ Add this at the top
+
 
   const handleChange = (e) => {
     const newData = { ...formData, [e.target.name]: e.target.value };
     setFormData(newData);
-    if (onUpdate) {
-      onUpdate(newData);
+    if (onUpdate3) { // ✅ Corrected function name
+        onUpdate3(newData);
     }
-  };
+};
+
+
+  const handleSubmit = async () => {
+    try {
+        const response = await fetch("http://localhost:5000/api/communication", { // ✅ Correct API endpoint
+            method: "POST",
+            headers: { "Content-Type": "application/json" }, // ✅ JSON data format
+            body: JSON.stringify(formData)
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to save communication details");
+        }
+
+        console.log("Communication details saved successfully!");
+        setSaved(true);  // ✅ Set "Saved!" message to show
+        
+    } catch (error) {
+        console.error("Error submitting communication data:", error);
+        alert("Error submitting communication details!");
+    }
+};
+
 
   return (
   <Box sx={{ width: "100%", padding: { xs: 1, sm: 3 } }}>
@@ -66,6 +94,7 @@ const Communication = ({ onUpdate }) => {
                 variant="standard"
                 InputProps={{ disableUnderline: true, sx: { height: "30px" } }}
                 size="small"
+                placeholder="Enter Mobile Number 01"
               />
               <IconButton sx={{ padding: "0px" }}>
                 <PhoneIcon />
@@ -90,6 +119,7 @@ const Communication = ({ onUpdate }) => {
                 variant="standard"
                 InputProps={{ disableUnderline: true, sx: { height: "30px" } }}
                 size="small"
+                placeholder="Enter Mobile Number 02"
               />
               <IconButton sx={{ padding: "0px" }}>
                 <PhoneIcon />
@@ -111,6 +141,7 @@ const Communication = ({ onUpdate }) => {
                 variant="standard"
                 InputProps={{ disableUnderline: true, sx: { height: "30px" } }}
                 size="small"
+                placeholder="Enter Personal Email ID"
               />
             </Box>
           </Box>
@@ -129,6 +160,7 @@ const Communication = ({ onUpdate }) => {
                 variant="standard"
                 InputProps={{ disableUnderline: true, sx: { height: "30px" } }}
                 size="small"
+                placeholder="Enter Official Email ID"
               />
             </Box>
           </Box>
@@ -145,6 +177,7 @@ const Communication = ({ onUpdate }) => {
               onChange={handleChange}
               fullWidth
               size="small"
+              placeholder="Choose your Location"
             >
               <MenuItem value="Urban">Urban</MenuItem>
               <MenuItem value="Rural">Rural</MenuItem>
@@ -165,6 +198,7 @@ const Communication = ({ onUpdate }) => {
             multiline
             rows={5}
             size="small"
+            placeholder="Enter Current Address"
           />
           <Typography variant="caption" color="gray">Enter Current address</Typography>
 
@@ -178,10 +212,23 @@ const Communication = ({ onUpdate }) => {
             multiline
             rows={5}
             size="small"
+            placeholder="Enter Permanent Address"
           />
           <Typography variant="caption" color="gray">Enter Permanent address</Typography>
         </Grid>
       </Grid>
+      <Button 
+        variant="contained" 
+        sx={{ mt: 2, backgroundColor: "green", color: "white", '&:hover': { backgroundColor: "darkgreen" } }} // ✅ Makes button green
+        onClick={handleSubmit} // ✅ Calls handleSubmit function
+        >
+        Save
+      </Button>
+      {saved && ( // ✅ Show "Saved!" text if form is successfully submitted
+        <Typography sx={{ ml: 2, color: "green", fontWeight: "bold" }}>
+            Saved!
+        </Typography>
+    )}
     </Box>
   );
 };

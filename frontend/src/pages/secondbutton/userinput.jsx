@@ -7,7 +7,7 @@ import Communication from "./communication";
 import Health from "./health";
 import Additional from "./additional";
 import ClassAdvisor from "./classadvisor";
-import Infrastructure from "../InfraPage/infra"; // Import the new Infrastructure component
+ // Import the new Infrastructure component
 
 const steps = [
   { id: "personal", label: "Personal" },
@@ -15,7 +15,7 @@ const steps = [
   { id: "communication", label: "Communication" },
   { id: "advisor", label: "Class Advisor" },
   { id: "health", label: "Health" },
-  { id: "infrastructure", label: "Infrastructure" }, // New step
+
   { id: "additional", label: "Additional Info" },
 ];
 
@@ -148,8 +148,7 @@ const UserInput = () => {
         {activeStep === 2 && <Communication onUpdate={handleUpdate} />}
         {activeStep === 3 && <ClassAdvisor onUpdate={handleUpdate} />}
         {activeStep === 4 && <Health onUpdate={handleUpdate} />}
-        {activeStep === 5 && <Infrastructure onUpdate={handleUpdate} />} {/* New Infrastructure step */}
-        {activeStep === 6 && <Additional onUpdate={handleUpdate} />}
+        {activeStep === 5&& <Additional onUpdate={handleUpdate} />}
       </Box>
 
       {/* Navigation Buttons */}
