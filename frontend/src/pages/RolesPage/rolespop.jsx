@@ -295,50 +295,50 @@ const RolesPop = ({ onClose, editingRole }) => {
         />
 
         {/* Set Priority */}
-        <Typography variant="body1" gutterBottom>
-          Set Priority
-        </Typography>
-        <Box sx={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
-          <Button
-            variant="outlined"
-            onClick={() => setPriority("High")}
-            sx={{
-              flex: 1,
-              borderColor: "red",
-              color: priority === "High" ? "white" : "red",
-              backgroundColor: priority === "High" ? "red" : "transparent",
-              "&:hover": { backgroundColor: "red", color: "white" },
-            }}
-          >
-            High
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => setPriority("Medium")}
-            sx={{
-              flex: 1,
-              borderColor: "orange",
-              color: priority === "Medium" ? "white" : "orange",
-              backgroundColor: priority === "Medium" ? "orange" : "transparent",
-              "&:hover": { backgroundColor: "orange", color: "white" },
-            }}
-          >
-            Medium
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => setPriority("Low")}
-            sx={{
-              flex: 1,
-              borderColor: "green",
-              color: priority === "Low" ? "white" : "green",
-              backgroundColor: priority === "Low" ? "green" : "transparent",
-              "&:hover": { backgroundColor: "green", color: "white" },
-            }}
-          >
-            Low
-          </Button>
-        </Box>
+<Typography variant="body1" gutterBottom>
+  Set Priority
+</Typography>
+<Box sx={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+  <Chip
+    label="High"
+    onClick={() => setPriority("High")}
+    sx={{
+      backgroundColor: priority === "High" ? "red" : "transparent",
+      color: priority === "High" ? "white" : "red",
+      border: "1px solid red",
+      "&:hover": {
+        backgroundColor: "red",
+        color: "white",
+      },
+    }}
+  />
+  <Chip
+    label="Medium"
+    onClick={() => setPriority("Medium")}
+    sx={{
+      backgroundColor: priority === "Medium" ? "orange" : "transparent",
+      color: priority === "Medium" ? "white" : "orange",
+      border: "1px solid orange",
+      "&:hover": {
+        backgroundColor: "orange",
+        color: "white",
+      },
+    }}
+  />
+  <Chip
+    label="Low"
+    onClick={() => setPriority("Low")}
+    sx={{
+      backgroundColor: priority === "Low" ? "green" : "transparent",
+      color: priority === "Low" ? "white" : "green",
+      border: "1px solid green",
+      "&:hover": {
+        backgroundColor: "green",
+        color: "white",
+      },
+    }}
+  />
+</Box>
 
         {/* Assign Members */}
         <Typography variant="body1" gutterBottom>

@@ -7,6 +7,7 @@ import Communication from "./communication";
 import Health from "./health";
 import Additional from "./additional";
 import ClassAdvisor from "./classadvisor";
+import Infrastructure from "../InfraPage/infra"; // Import the new Infrastructure component
 
 const steps = [
   { id: "personal", label: "Personal" },
@@ -14,6 +15,7 @@ const steps = [
   { id: "communication", label: "Communication" },
   { id: "advisor", label: "Class Advisor" },
   { id: "health", label: "Health" },
+  { id: "infrastructure", label: "Infrastructure" }, // New step
   { id: "additional", label: "Additional Info" },
 ];
 
@@ -94,6 +96,33 @@ const UserInput = () => {
         marginTop: "20px",
       }}
     >
+      {/* Create and Draft Buttons */}
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, marginBottom: "20px" }}>
+        <Button
+          variant="contained"
+          sx={{
+            backgroundColor: "#4caf50", // Green color
+            color: "white",
+            textTransform: "none",
+            "&:hover": { backgroundColor: "#45a049" }, // Darker green on hover
+          }}
+        >
+          Create
+        </Button>
+        <Button
+          variant="contained"
+          sx={{
+            backgroundColor: "#e0e0e0", // Light gray color
+            color: "black",
+            textTransform: "none",
+            "&:hover": { backgroundColor: "#bdbdbd" }, // Darker gray on hover
+          }}
+        >
+          Draft
+        </Button>
+      </Box>
+
+      {/* Stepper */}
       <Stepper alternativeLabel activeStep={activeStep} sx={{ width: "100%" }}>
         {steps.map((step, index) => (
           <Step key={step.id} onClick={() => setActiveStep(index)} sx={{ cursor: "pointer" }}>
@@ -112,13 +141,15 @@ const UserInput = () => {
         ))}
       </Stepper>
 
+      {/* Form Content */}
       <Box sx={{ marginTop: "20px" }}>
         {activeStep === 0 && <Personal onUpdate={handleUpdate} />}
         {activeStep === 1 && <Academic onUpdate={handleUpdate} />}
         {activeStep === 2 && <Communication onUpdate={handleUpdate} />}
         {activeStep === 3 && <ClassAdvisor onUpdate={handleUpdate} />}
         {activeStep === 4 && <Health onUpdate={handleUpdate} />}
-        {activeStep === 5 && <Additional onUpdate={handleUpdate} />}
+        {activeStep === 5 && <Infrastructure onUpdate={handleUpdate} />} {/* New Infrastructure step */}
+        {activeStep === 6 && <Additional onUpdate={handleUpdate} />}
       </Box>
 
       {/* Navigation Buttons */}
