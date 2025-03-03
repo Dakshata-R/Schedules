@@ -1,4 +1,4 @@
-const infraModel = require('../modals/inframodals');
+const infraModel = require('../models/inframodals');
 
 exports.saveBasic = (req, res) => {
   const { uniqueId, venueName, location, priority, primaryPurpose, responsiblePersons } = req.body;
