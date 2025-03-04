@@ -8,8 +8,10 @@ import EventIcon from "@mui/icons-material/Event";
 import UserInput from "./userinput";
 import Personal from "./personal";
 import Health from "./health";
-import ClassAdvisor from "./classadvisor"; // Make sure to import ClassAdvisor
+import ClassAdvisor from "./classadvisor";
 import Additional from "./additional";
+import Roles from "../RolesPage/roles";
+import Infrastructure from "../InfraPage/infra"; // Import the Infrastructure component
 
 const Users = () => {
   const [selectedTab, setSelectedTab] = useState("users");
@@ -20,7 +22,6 @@ const Users = () => {
     { id: "roles", label: "Roles", icon: <GroupsIcon fontSize="small" /> },
     { id: "infrastructure", label: "Infrastructure", icon: <ApartmentIcon fontSize="small" /> },
     { id: "schedules", label: "Schedules", icon: <EventIcon fontSize="small" /> },
-    
   ];
 
   return (
@@ -88,7 +89,9 @@ const Users = () => {
       {selectedTab === "users" && <UserInput />}
       {selectedTab === "health" && <Health />}
       {selectedTab === "additional" && <Additional />}
-      {selectedTab === "classadvisor" && <ClassAdvisor />} {/* Render ClassAdvisor component */}
+      {selectedTab === "classadvisor" && <ClassAdvisor />}
+      {selectedTab === "roles" && <Roles />}
+      {selectedTab === "infrastructure" && <Infrastructure />} {/* Render Infrastructure component */}
     </Box>
   );
 };

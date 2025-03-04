@@ -42,6 +42,15 @@ const Academic = ({ onUpdate }) => {
     }
   };
 
+  const handleBulkUpload = (event) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      // Handle multiple files here
+      alert(`${files.length} files selected for bulk upload.`);
+      // You can process the files as needed, e.g., upload them to a server.
+    }
+  };
+
   const validateForm = () => {
     const newErrors = {};
     if (!formData.school) newErrors.school = "School name is required";
@@ -56,9 +65,70 @@ const Academic = ({ onUpdate }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (validateForm()) {
-      onUpdate(formData);
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    // Validate the form
+    if (!validateForm()) {
+        alert("Please fill out all required fields correctly.");
+        return;
+    }
+
+    // Create a FormData object to send the data
+    const formDataToSend = new FormData();
+
+    // Append all form fields to the FormData object
+    formDataToSend.append("school", formData.school);
+    formDataToSend.append("tenth_marks", formData.tenthMarks);
+    formDataToSend.append("tenth_percent", formData.tenthPercent);
+    formDataToSend.append("twelfth_marks", formData.twelfthMarks);
+    formDataToSend.append("twelfth_percent", formData.twelfthPercent);
+    formDataToSend.append("school_medium", formData.schoolMedium);
+    formDataToSend.append("department", formData.department);
+    formDataToSend.append("semester_grade", formData.semesterGrade);
+
+    // Append the uploaded file (if it exists)
+    if (formData.uploadedFile) {
+        formDataToSend.append("file", formData.uploadedFile);
+    } else {
+        alert("Please upload a PDF file.");
+        return;
+    }
+
+    try {
+        // Send the data to the backend
+        const response = await fetch("http://localhost:5000/api/academic", {
+            method: "POST",
+            body: formDataToSend,
+        });
+
+        // Check if the response is successful
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Upload failed");
+        }
+
+        // Handle successful submission
+        console.log("Academic details and file uploaded successfully!");
+        alert("Academic details and file uploaded successfully!");
+
+        // Optionally, reset the form after successful submission
+        setFormData({
+            school: "",
+            tenthMarks: "",
+            tenthPercent: "",
+            twelfthMarks: "",
+            twelfthPercent: "",
+            schoolMedium: "",
+            department: "",
+            semesterGrade: "",
+            uploadedFile: null,
+        });
+        setErrors({});
+    } catch (error) {
+        // Handle errors
+        console.error("Upload failed:", error);
+        alert(`Upload failed: ${error.message}`);
     }
   };
 
@@ -287,56 +357,75 @@ const Academic = ({ onUpdate }) => {
           </Typography>
         </Grid>
 
-        {/* Right Side - Image Upload */}
-        <Grid item xs={12} md={4}>
+        {/* Right Side - PDF Upload */}
+        <Grid item xs={12} md={4} display="flex" flexDirection="column" alignItems="center">
+          {/* Bulk Upload Button */}
+          <Button
+            variant="contained"
+            component="label"
+            sx={{ 
+              backgroundColor: "green", 
+              color: "white", 
+              mb: 2,
+              '&:hover': { backgroundColor: "darkgreen" }
+            }}
+            startIcon={<CloudUploadIcon />}
+          >
+            Bulk Upload
+            <input type="file" hidden onChange={handleBulkUpload} multiple />
+          </Button>
+
           {/* Add documents (req) Text */}
           <Typography variant="body1" gutterBottom sx={{ fontWeight: "bold", textAlign: "center" }}>
             Add documents (req)
           </Typography>
 
-          {/* Image Upload Section */}
+          {/* Grey Box Wrapper */}
           <Box
             sx={{
-              border: "1px dashed gray",
-              textAlign: "center",
-              padding: 2,
-              marginTop: 2,
-              height: "auto",
+              width: "200px",
+              height: "180px",
+              borderRadius: "12px",
+              backgroundColor: "#f5f5f5",
               display: "flex",
-              flexDirection: "column",
               justifyContent: "center",
               alignItems: "center",
-              width: { xs: "100%", sm: "80%" },
-              marginLeft: "auto",
-              marginRight: "auto",
+              textAlign: "center",
+              mt: 1,
+              border: "1px dashed gray",
+              flexDirection: "column",
             }}
           >
             {/* Red PDF Icon */}
             <PictureAsPdfIcon sx={{ fontSize: 50, color: "red" }} />
 
-            {/* Green Upload Icon and "Upload pdf" Text */}
-            <Box sx={{ display: "flex", alignItems: "center", mt: 2 }}>
-              <Button
-                component="label"
-                sx={{ p: 0, minWidth: 0, display: "flex", alignItems: "center" }}
-              >
-                <CloudUploadIcon sx={{ fontSize: 30, color: "green", mr: 1 }} />
-                <Typography variant="body1">Upload pdf</Typography>
-                <input type="file" hidden onChange={handleFileUpload} />
-              </Button>
-            </Box>
-
-            {/* Display Uploaded File Name */}
-            {formData.uploadedFile && (
-              <Typography variant="body2" sx={{ mt: 2 }}>
-                Uploaded: {formData.uploadedFile.name}
-              </Typography>
-            )}
+            {/* Upload Button */}
+            <Typography variant="body2" color="gray" component="div" mt={1}>
+              Upload a PDF document (max 600x600)
+              <Box display="block" mt={1}>
+                <Button
+                  variant="contained"
+                  component="label"
+                  sx={{ backgroundColor: "green", color: "white" }}
+                  startIcon={<CloudUploadIcon />}
+                >
+                  Upload PDF
+                  <input type="file" hidden onChange={handleFileUpload} accept="application/pdf" />
+                </Button>
+              </Box>
+            </Typography>
           </Box>
 
-          {/* File Format Information (Below Container) */}
+          {/* Display Uploaded File Name */}
+          {formData.uploadedFile && (
+            <Typography variant="body2" sx={{ mt: 2, textAlign: "center" }}>
+              Uploaded: {formData.uploadedFile.name}
+            </Typography>
+          )}
+
+          {/* File Format Information */}
           <Typography variant="caption" display="block" mt={1} textAlign="center">
-            File Format: pdf, Recommended Size: 600x600 (1:1)
+            File Format: PDF, Recommended Size: 600x600 (1:1)
           </Typography>
           <Typography variant="caption" display="block" textAlign="center">
             Upload required documents in PDF format.
@@ -345,8 +434,17 @@ const Academic = ({ onUpdate }) => {
       </Grid>
 
       {/* Save & Next Button */}
-      <Button variant="contained" color="primary" onClick={handleSubmit} sx={{ mt: 2 }}>
-        Save & Next
+      <Button 
+        variant="contained" 
+        onClick={handleSubmit} 
+        sx={{ 
+            mt: 2, 
+            backgroundColor: "green !important", 
+            color: "white", 
+            '&:hover': { backgroundColor: "darkgreen !important" } 
+        }}
+      >
+        Save
       </Button>
     </Box>
   );
