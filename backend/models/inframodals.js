@@ -6,6 +6,7 @@ const db = mysql.createConnection({
   database: 'infra_management',
 });
 
+// Existing functions for saving data
 exports.saveBasic = (uniqueId, venueName, location, priority, primaryPurpose, responsiblePersons, imagePath, callback) => {
   const query = `
     INSERT INTO basic (uniqueId, venueName, location, priority, primaryPurpose, responsiblePersons, imagePath)
@@ -28,4 +29,40 @@ exports.saveFacility = (roles, facilities, selectedFacilities, callback) => {
     VALUES (?, ?, ?)
   `;
   db.query(query, [JSON.stringify(roles), JSON.stringify(facilities), JSON.stringify(selectedFacilities)], callback);
+};
+
+// New function to fetch combined data
+exports.fetchCombinedData = (callback) => {
+  const query = `
+    SELECT 
+      b.id AS basicId,
+      b.uniqueId,
+      b.venueName,
+      b.location,
+      b.priority,
+      b.primaryPurpose,
+      b.responsiblePersons,
+      b.imagePath,
+      v.id AS venueTypeId,
+      v.capacity,
+      v.floor,
+      v.maintenanceFrequency,
+      v.usageFrequency,
+      v.accessibilityOptions,
+      v.ventilationType,
+      f.id AS facilityId,
+      f.roles AS accessToRoles,
+      f.facilities,
+      f.selectedFacilities
+    FROM basic b
+    LEFT JOIN venue_type v ON b.id = v.id
+    LEFT JOIN facility f ON b.id = f.id
+  `;
+  db.query(query, callback);
+};
+
+// New function to delete a row by uniqueId
+exports.deleteRow = (uniqueId, callback) => {
+  const query = 'DELETE FROM basic WHERE uniqueId = ?';
+  db.query(query, [uniqueId], callback);
 };

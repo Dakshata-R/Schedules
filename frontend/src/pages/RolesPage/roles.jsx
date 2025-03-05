@@ -266,16 +266,16 @@ const Roles = () => {
           variant="contained"
           onClick={handleOpenRolesPop}
           sx={{
-            backgroundColor: "green",
+            backgroundColor: "#4caf50",
             color: "white",
             position: "absolute",
             top: "20px",
             right: "20px",
             textTransform: "none",
             fontSize: "1rem",
-            padding: "10px 20px",
+            padding: "5px 40px",
             "&:hover": {
-              backgroundColor: "darkgreen",
+              backgroundColor: "green",
             },
           }}
         >
