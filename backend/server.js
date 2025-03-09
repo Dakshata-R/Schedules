@@ -10,6 +10,8 @@ const communicationRoutes = require('./routes/communicationRoutes');
 const advisorRoutes = require('./routes/advisorRoutes');
 const healthRoutes = require('./routes/healthRoutes'); // 👈 Correct import for healthRoutes
 const additionalRoutes = require('./routes/additionalRoutes'); // 👈 Import additionalRoutes
+const combinedDataRoutes = require('./routes/combinedDataRoutes');
+const authRoutes = require("./routes/loginroutes");
 
 const app = express();
 const port = 5000;
@@ -28,7 +30,10 @@ app.use('/api', academicRoutes);
 app.use('/api', communicationRoutes);
 app.use('/api', advisorRoutes);
 app.use('/api', healthRoutes); // 👈 Use healthRoutes
-app.use('/api', additionalRoutes); // 👈 Use additionalRoutes
+app.use('/api', additionalRoutes); 
+app.use('/api', combinedDataRoutes);
+app.use("/api/auth", authRoutes);
+// 👈 Use additionalRoutes
 
 // Start the server
 app.listen(port, () => {

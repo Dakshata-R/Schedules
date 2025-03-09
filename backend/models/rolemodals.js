@@ -1,10 +1,4 @@
-const mysql = require('mysql2');
-const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: 'sandhiya',
-  database: 'roles_management',
-});
+const db = require('../config/roles_db'); // Import the db connection
 
 exports.saveRole = (roleName, priority, members, permissions, callback) => {
   const roleQuery = 'INSERT INTO roles (role_name, priority) VALUES (?, ?)';

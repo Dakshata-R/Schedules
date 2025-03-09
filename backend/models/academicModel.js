@@ -1,21 +1,5 @@
-const mysql = require('mysql2');
+const db = require('../config/user_db');
 
-// Create a connection to the MySQL database
-const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: 'sandhiya', // 👈 Use your MySQL password
-    database: 'user_management', // 👈 Updated database name
-});
-
-// Connect to the database
-db.connect((err) => {
-    if (err) {
-        console.error('Error connecting to the database:', err);
-        return;
-    }
-    console.log('Connected to the user_management database');
-});
 const AcademicModel = {
     create: (data, callback) => {
         const sql = `INSERT INTO academic_details 
@@ -36,7 +20,7 @@ const AcademicModel = {
     },
     getAll: (callback) => {
         const sql = `SELECT * FROM academic_details`;
-        queryDatabase(sql, [], callback);
+        db.query(sql, [], callback);
     }
 };
 
