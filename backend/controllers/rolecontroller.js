@@ -1,4 +1,4 @@
-const roleModel = require('../modals/rolemodals');
+const roleModel = require('../models/rolemodals');
 
 exports.saveRole = (req, res) => {
   const { roleName, priority, members, permissions } = req.body;

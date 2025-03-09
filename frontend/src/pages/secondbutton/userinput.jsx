@@ -1,5 +1,18 @@
-import React, { useState } from "react";
-import { Box, Stepper, Step, StepLabel, Paper, Typography, Button } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Stepper,
+  Step,
+  StepLabel,
+  Paper,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+} from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import Personal from "./personal";
 import Academic from "./academics";
@@ -7,7 +20,6 @@ import Communication from "./communication";
 import Health from "./health";
 import Additional from "./additional";
 import ClassAdvisor from "./classadvisor";
-import Infrastructure from "../InfraPage/infra"; // Import the new Infrastructure component
 
 const steps = [
   { id: "personal", label: "Personal" },
@@ -15,7 +27,6 @@ const steps = [
   { id: "communication", label: "Communication" },
   { id: "advisor", label: "Class Advisor" },
   { id: "health", label: "Health" },
-  { id: "infrastructure", label: "Infrastructure" }, // New step
   { id: "additional", label: "Additional Info" },
 ];
 
@@ -41,23 +52,50 @@ const CustomStepIcon = ({ active, completed, icon }) => (
 const UserInput = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({});
+  const [isFormStarted, setIsFormStarted] = useState(false);
+  const [fetchedData, setFetchedData] = useState([]); // State to store fetched data
 
-  const handleNext = async () => {
+  // Fetch data from the backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/fetch-data");
+        if (response.ok) {
+          const data = await response.json();
+          setFetchedData(data);
+        } else {
+          console.error("Failed to fetch data");
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleNext = () => {
     if (activeStep < steps.length - 1) {
       setActiveStep(activeStep + 1);
-    } else {
-      try {
-        // Combine all form data before sending to the backend
-        const combinedData = {
-          ...formData, // Contains personal, academic, and other data
-        };
+    }
+  };
 
-        // Send all form data to the backend
+  const handleBack = () => {
+    if (activeStep > 0) setActiveStep(activeStep - 1);
+  };
+
+  const handleUpdate = (data) => {
+    setFormData((prevData) => ({ ...prevData, ...data }));
+  };
+
+  const handleCreate = async () => {
+    setIsFormStarted(true); // Start the form
+    if (activeStep === steps.length - 1) {
+      try {
+        const combinedData = { ...formData };
         const response = await fetch("http://localhost:5000/api/save-student", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(combinedData),
         });
 
@@ -75,14 +113,6 @@ const UserInput = () => {
     }
   };
 
-  const handleBack = () => {
-    if (activeStep > 0) setActiveStep(activeStep - 1);
-  };
-
-  const handleUpdate = (data) => {
-    setFormData((prevData) => ({ ...prevData, ...data }));
-  };
-
   return (
     <Paper
       sx={{
@@ -96,77 +126,103 @@ const UserInput = () => {
         marginTop: "20px",
       }}
     >
-      {/* Create and Draft Buttons */}
-      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, marginBottom: "20px" }}>
+      {/* Create Button */}
+      <Box sx={{ display: "flex", justifyContent: "flex-end", marginBottom: "20px" }}>
         <Button
           variant="contained"
           sx={{
-            backgroundColor: "#4caf50", // Green color
+            backgroundColor: "#4caf50",
             color: "white",
+            width: "10%",
             textTransform: "none",
-            "&:hover": { backgroundColor: "#45a049" }, // Darker green on hover
+            "&:hover": { backgroundColor: "#45a049" },
           }}
+          onClick={handleCreate}
         >
-          Create
-        </Button>
-        <Button
-          variant="contained"
-          sx={{
-            backgroundColor: "#e0e0e0", // Light gray color
-            color: "black",
-            textTransform: "none",
-            "&:hover": { backgroundColor: "#bdbdbd" }, // Darker gray on hover
-          }}
-        >
-          Draft
+          + User
         </Button>
       </Box>
 
-      {/* Stepper */}
-      <Stepper alternativeLabel activeStep={activeStep} sx={{ width: "100%" }}>
-        {steps.map((step, index) => (
-          <Step key={step.id} onClick={() => setActiveStep(index)} sx={{ cursor: "pointer" }}>
-            <StepLabel
-              StepIconComponent={(props) => <CustomStepIcon {...props} icon={index + 1} />}
-              sx={{
-                "& .MuiStepLabel-label": {
-                  color: activeStep === index ? "green" : "black",
-                  fontWeight: activeStep === index ? "bold" : "normal",
-                },
-              }}
-            >
-              {step.label}
-            </StepLabel>
-          </Step>
-        ))}
-      </Stepper>
+      {/* Display Fetched Data in a Table (Only when form is not started) */}
+      {!isFormStarted && (
+        <TableContainer component={Paper} sx={{ marginBottom: "20px" }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>User ID</TableCell>
+                <TableCell>Username</TableCell>
+                <TableCell>Date of Birth</TableCell>
+                <TableCell>Blood Group</TableCell>
+                <TableCell>Contact Number</TableCell>
+                <TableCell>Class Advisor</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {fetchedData.map((row, index) => (
+                <TableRow key={index}>
+                  <TableCell>{row.userId}</TableCell>
+                  <TableCell>{row.username}</TableCell>
+                  <TableCell>{row.dob}</TableCell>
+                  <TableCell>{row.bloodGroup}</TableCell>
+                  <TableCell>{row.contactNumber1}</TableCell>
+                  <TableCell>{row.classAdvisor}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
-      {/* Form Content */}
-      <Box sx={{ marginTop: "20px" }}>
-        {activeStep === 0 && <Personal onUpdate={handleUpdate} />}
-        {activeStep === 1 && <Academic onUpdate={handleUpdate} />}
-        {activeStep === 2 && <Communication onUpdate={handleUpdate} />}
-        {activeStep === 3 && <ClassAdvisor onUpdate={handleUpdate} />}
-        {activeStep === 4 && <Health onUpdate={handleUpdate} />}
-        {activeStep === 5 && <Infrastructure onUpdate={handleUpdate} />} {/* New Infrastructure step */}
-        {activeStep === 6 && <Additional onUpdate={handleUpdate} />}
-      </Box>
+      {/* Stepper (Only when form is started) */}
+      {isFormStarted && (
+        <Stepper alternativeLabel activeStep={activeStep} sx={{ width: "100%" }}>
+          {steps.map((step, index) => (
+            <Step key={step.id} onClick={() => setActiveStep(index)} sx={{ cursor: "pointer" }}>
+              <StepLabel
+                StepIconComponent={(props) => <CustomStepIcon {...props} icon={index + 1} />}
+                sx={{
+                  "& .MuiStepLabel-label": {
+                    color: activeStep === index ? "green" : "black",
+                    fontWeight: activeStep === index ? "bold" : "normal",
+                  },
+                }}
+              >
+                {step.label}
+              </StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+      )}
 
-      {/* Navigation Buttons */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", marginTop: "20px" }}>
-        <Button variant="contained" onClick={handleBack} disabled={activeStep === 0}>
-          Back
-        </Button>
-        {activeStep === steps.length - 1 ? (
-          <Button variant="contained" color="success" onClick={handleNext}>
-            Save
+      {/* Form Content (Only when form is started) */}
+      {isFormStarted && (
+        <Box sx={{ marginTop: "20px" }}>
+          {activeStep === 0 && <Personal onUpdate={handleUpdate} />}
+          {activeStep === 1 && <Academic onUpdate={handleUpdate} />}
+          {activeStep === 2 && <Communication onUpdate={handleUpdate} />}
+          {activeStep === 3 && <ClassAdvisor onUpdate={handleUpdate} />}
+          {activeStep === 4 && <Health onUpdate={handleUpdate} />}
+          {activeStep === 5 && <Additional onUpdate={handleUpdate} />}
+        </Box>
+      )}
+
+      {/* Navigation Buttons (Only when form is started) */}
+      {isFormStarted && (
+        <Box sx={{ display: "flex", justifyContent: "space-between", marginTop: "20px" }}>
+          <Button variant="contained" onClick={handleBack} disabled={activeStep === 0}>
+            Back
           </Button>
-        ) : (
-          <Button variant="contained" color="primary" onClick={handleNext}>
-            Save & Next
-          </Button>
-        )}
-      </Box>
+          {activeStep === steps.length - 1 ? (
+            <Button variant="contained" color="success" onClick={handleCreate}>
+              Save
+            </Button>
+          ) : (
+            <Button variant="contained" color="primary" onClick={handleNext}>
+              Save & Next
+            </Button>
+          )}
+        </Box>
+      )}
     </Paper>
   );
 };

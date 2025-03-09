@@ -41,14 +41,11 @@ const Personal = ({ onUpdate }) => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const imageData = reader.result; // Base64 string
-        if (type === "profile") {
-          setFormData({ ...formData, profileImage: imageData });
-          onUpdate({ profileImage: imageData });
-        } else {
-          setFormData({ ...formData, coverImage: imageData });
-          onUpdate({ coverImage: imageData });
-        }
+        setFormData((prevState) => ({
+          ...prevState,
+          [type === "profile" ? "profileImage" : "coverImage"]: file, // Store file
+          [type === "profile" ? "profileImagePreview" : "coverImagePreview"]: reader.result, // Store preview
+        }));
       };
       reader.readAsDataURL(file);
     }
@@ -69,9 +66,44 @@ const Personal = ({ onUpdate }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const [isSaved, setIsSaved] = useState(false); // State to track save status
+
+  const handleSubmit = async () => {
     if (validateForm()) {
-      onUpdate(formData);
+      try {
+        const formDataToSend = new FormData();
+
+        // Append normal fields
+        Object.keys(formData).forEach((key) => {
+          if (
+            key !== "profileImage" &&
+            key !== "coverImage" &&
+            key !== "profileImagePreview" &&
+            key !== "coverImagePreview"
+          ) {
+            formDataToSend.append(key, formData[key]);
+          }
+        });
+
+        // Append files correctly
+        if (formData.profileImage instanceof File) {
+          formDataToSend.append("profileImage", formData.profileImage);
+        }
+        if (formData.coverImage instanceof File) {
+          formDataToSend.append("coverImage", formData.coverImage);
+        }
+
+        const response = await fetch("http://localhost:5000/api/personal", {
+          method: "POST",
+          body: formDataToSend,
+        });
+
+        const data = await response.json();
+        console.log(data.message);
+        setIsSaved(true); // Show "Saved!" text and change button color
+      } catch (error) {
+        console.error("Error submitting data:", error);
+      }
     }
   };
 
@@ -355,8 +387,21 @@ const Personal = ({ onUpdate }) => {
           </Typography>
         </Grid>
 
-        {/* Profile Image Section */}
+        {/* Right Grid - Bulk Upload and Profile Image Section */}
         <Grid item xs={12} md={4} display="flex" flexDirection="column" alignItems="center">
+          {/* Bulk Upload Button */}
+          <Box sx={{ width: "100%", textAlign: "center", mb: 2 }}>
+            <Button
+              variant="contained"
+              component="label"
+              sx={{ backgroundColor: "green", color: "white" }}
+            >
+              Bulk Upload
+              <input type="file" hidden />
+            </Button>
+          </Box>
+
+          {/* Profile Image Section */}
           <Typography variant="body1" fontWeight="bold" mb={1}>
             Add Profile Image
           </Typography>
@@ -374,26 +419,31 @@ const Personal = ({ onUpdate }) => {
               border: "1px dashed gray",
             }}
           >
-            {formData.profileImage ? (
+            {formData.profileImagePreview ? (
               <img
-                src={formData.profileImage}
+                src={formData.profileImagePreview}
                 alt="Profile Preview"
                 style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "12px" }}
               />
             ) : (
-              <Typography variant="body2" color="gray">
-                Upload a cover image for your Image
-                file format jpg,png (Recommended)
-                0x600(1:1)
-                <Button
-                  variant="contained"
-                  component="label"
-                  sx={{ mt: 1, backgroundColor: "green", color: "white" }}
-                  startIcon={<CloudUploadIcon />}
-                >
-                  Upload Image
-                  <input type="file" hidden onChange={(e) => handleImageUpload(e, "profile")} accept="image/jpeg, image/png" />
-                </Button>
+              <Typography variant="body2" color="gray" component="div">
+                Upload a profile image (jpg, png)
+                <Box display="block" mt={1}>
+                  <Button
+                    variant="contained"
+                    component="label"
+                    sx={{ backgroundColor: "green", color: "white" }}
+                    startIcon={<CloudUploadIcon />}
+                  >
+                    Upload Image
+                    <input
+                      type="file"
+                      hidden
+                      onChange={(e) => handleImageUpload(e, "profile")}
+                      accept="image/jpeg, image/png"
+                    />
+                  </Button>
+                </Box>
               </Typography>
             )}
           </Box>
@@ -401,9 +451,16 @@ const Personal = ({ onUpdate }) => {
       </Grid>
 
       {/* Save & Next Button */}
-      <Button variant="contained" color="primary" onClick={handleSubmit} sx={{ mt: 2 }}>
-        Save & Next
-      </Button>
+      <Box display="flex" alignItems="center" gap={2} mt={2}>
+        <Button
+          variant="contained"
+          sx={{ backgroundColor: "green !important", color: "white", "&:hover": { backgroundColor: "darkgreen !important" } }}
+          onClick={handleSubmit}
+        >
+          Save
+        </Button>
+        {isSaved && <Typography color="green" fontWeight="bold">Saved!</Typography>}
+      </Box>
     </Box>
   );
 };
