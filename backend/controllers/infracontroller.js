@@ -45,6 +45,8 @@ exports.saveFacility = (req, res) => {
     res.status(200).send('Facility data saved successfully');
   });
 };
+
+// New controller function to fetch combined data
 exports.fetchCombinedData = (req, res) => {
   infraModel.fetchCombinedData((err, results) => {
     if (err) {
@@ -52,7 +54,6 @@ exports.fetchCombinedData = (req, res) => {
       res.status(500).send('Error fetching combined data');
       return;
     }
-    console.log('Fetched Data:', results); // Debugging
     res.status(200).json(results);
   });
 };

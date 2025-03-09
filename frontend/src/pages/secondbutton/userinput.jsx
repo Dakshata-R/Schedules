@@ -53,7 +53,7 @@ const UserInput = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({});
   const [isFormStarted, setIsFormStarted] = useState(false);
-  const [fetchedData, setFetchedData] = useState([]);
+  const [fetchedData, setFetchedData] = useState([]); // State to store fetched data
 
   // Fetch data from the backend
   useEffect(() => {
@@ -89,7 +89,7 @@ const UserInput = () => {
   };
 
   const handleCreate = async () => {
-    setIsFormStarted(true);
+    setIsFormStarted(true); // Start the form
     if (activeStep === steps.length - 1) {
       try {
         const combinedData = { ...formData };
@@ -173,51 +173,55 @@ const UserInput = () => {
         </TableContainer>
       )}
 
-      {/* Stepper and Form Content (Only when form is started) */}
+      {/* Stepper (Only when form is started) */}
       {isFormStarted && (
-        <>
-          <Stepper alternativeLabel activeStep={activeStep} sx={{ width: "100%" }}>
-            {steps.map((step, index) => (
-              <Step key={step.id} onClick={() => setActiveStep(index)} sx={{ cursor: "pointer" }}>
-                <StepLabel
-                  StepIconComponent={(props) => <CustomStepIcon {...props} icon={index + 1} />}
-                  sx={{
-                    "& .MuiStepLabel-label": {
-                      color: activeStep === index ? "green" : "black",
-                      fontWeight: activeStep === index ? "bold" : "normal",
-                    },
-                  }}
-                >
-                  {step.label}
-                </StepLabel>
-              </Step>
-            ))}
-          </Stepper>
+        <Stepper alternativeLabel activeStep={activeStep} sx={{ width: "100%" }}>
+          {steps.map((step, index) => (
+            <Step key={step.id} onClick={() => setActiveStep(index)} sx={{ cursor: "pointer" }}>
+              <StepLabel
+                StepIconComponent={(props) => <CustomStepIcon {...props} icon={index + 1} />}
+                sx={{
+                  "& .MuiStepLabel-label": {
+                    color: activeStep === index ? "green" : "black",
+                    fontWeight: activeStep === index ? "bold" : "normal",
+                  },
+                }}
+              >
+                {step.label}
+              </StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+      )}
 
-          <Box sx={{ marginTop: "20px" }}>
-            {activeStep === 0 && <Personal onUpdate={handleUpdate} />}
-            {activeStep === 1 && <Academic onUpdate={handleUpdate} />}
-            {activeStep === 2 && <Communication onUpdate={handleUpdate} />}
-            {activeStep === 3 && <ClassAdvisor onUpdate={handleUpdate} />}
-            {activeStep === 4 && <Health onUpdate={handleUpdate} />}
-            {activeStep === 5 && <Additional onUpdate={handleUpdate} />}
-          </Box>
+      {/* Form Content (Only when form is started) */}
+      {isFormStarted && (
+        <Box sx={{ marginTop: "20px" }}>
+          {activeStep === 0 && <Personal onUpdate={handleUpdate} />}
+          {activeStep === 1 && <Academic onUpdate={handleUpdate} />}
+          {activeStep === 2 && <Communication onUpdate={handleUpdate} />}
+          {activeStep === 3 && <ClassAdvisor onUpdate={handleUpdate} />}
+          {activeStep === 4 && <Health onUpdate={handleUpdate} />}
+          {activeStep === 5 && <Additional onUpdate={handleUpdate} />}
+        </Box>
+      )}
 
-          <Box sx={{ display: "flex", justifyContent: "space-between", marginTop: "20px" }}>
-            <Button variant="contained" onClick={handleBack} disabled={activeStep === 0}>
-              Back
+      {/* Navigation Buttons (Only when form is started) */}
+      {isFormStarted && (
+        <Box sx={{ display: "flex", justifyContent: "space-between", marginTop: "20px" }}>
+          <Button variant="contained" onClick={handleBack} disabled={activeStep === 0}>
+            Back
+          </Button>
+          {activeStep === steps.length - 1 ? (
+            <Button variant="contained" color="success" onClick={handleCreate}>
+              Save
             </Button>
-            {activeStep === steps.length - 1 ? (
-              <Button variant="contained" color="success" onClick={handleCreate}>
-                Save
-              </Button>
-            ) : (
-              <Button variant="contained" color="primary" onClick={handleNext}>
-                Save & Next
-              </Button>
-            )}
-          </Box>
-        </>
+          ) : (
+            <Button variant="contained" color="primary" onClick={handleNext}>
+              Save & Next
+            </Button>
+          )}
+        </Box>
       )}
     </Paper>
   );
