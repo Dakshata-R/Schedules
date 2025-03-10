@@ -92,12 +92,15 @@ const FacilityType = () => {
   };
 
   // Handle adding a new user
-  const handleAddUser = (users) => {
-    setSelectedUsers([...selectedUsers, ...users]);
-    users.forEach(user => {
-      setRoles([...roles, user.roleName]); // Add the role name to the roles state
-    });
-  };
+  
+// Handle adding a new user
+const handleAddUser = (users) => {
+  setSelectedUsers([...selectedUsers, ...users]);
+  const newRoles = users.map(user => user.roleName); // Extract role names from users
+  setRoles([...roles, ...newRoles]); // Add the new roles to the roles state
+};
+
+// Handle adding a new accessibility option
 
   // Handle deleting a user
   const handleDeleteUser = (index) => {

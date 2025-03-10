@@ -1,5 +1,6 @@
 const infraModel = require('../models/inframodals');
 
+// Existing controller functions
 exports.saveBasic = (req, res) => {
   const { uniqueId, venueName, location, priority, primaryPurpose, responsiblePersons } = req.body;
   const imagePath = req.file ? req.file.path : '';
@@ -28,14 +29,45 @@ exports.saveVenueType = (req, res) => {
 };
 
 exports.saveFacility = (req, res) => {
-  const { roles, facilities, selectedFacilities } = req.body;
+  const { id, roles, facilities, selectedFacilities } = req.body;
 
-  infraModel.saveFacility(roles, facilities, selectedFacilities, (err, result) => {
+  // Ensure that roles, facilities, and selectedFacilities are arrays
+  if (!Array.isArray(roles) || !Array.isArray(facilities) || !Array.isArray(selectedFacilities)) {
+    return res.status(400).send('Invalid data format: roles, facilities, and selectedFacilities must be arrays');
+  }
+
+  infraModel.saveFacility(id, roles, facilities, selectedFacilities, (err, result) => {
     if (err) {
       console.error('Error saving facility data:', err);
       res.status(500).send('Error saving facility data');
       return;
     }
     res.status(200).send('Facility data saved successfully');
+  });
+};
+
+// New controller function to fetch combined data
+exports.fetchCombinedData = (req, res) => {
+  infraModel.fetchCombinedData((err, results) => {
+    if (err) {
+      console.error('Error fetching combined data:', err);
+      res.status(500).send('Error fetching combined data');
+      return;
+    }
+    res.status(200).json(results);
+  });
+};
+
+// New controller function to delete a row by uniqueId
+exports.deleteRow = (req, res) => {
+  const { uniqueId } = req.params;
+
+  infraModel.deleteRow(uniqueId, (err, result) => {
+    if (err) {
+      console.error('Error deleting row:', err);
+      res.status(500).send('Failed to delete row');
+      return;
+    }
+    res.status(200).send('Row deleted successfully');
   });
 };

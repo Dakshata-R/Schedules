@@ -8,13 +8,12 @@ import Logout from "../pages/logout";
 const HomeRouting = () => {
   return (
     <Routes>
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/users" element={<Users />}>
-        {/* Show UserInput Component */}
+      <Route index element={<Dashboard />} />
+      <Route path="users" element={<Users />}>
         <Route index element={<UserInput />} />
       </Route>
-      <Route path="/files" element={<Files />} />
-      <Route path="/logout" element={<Logout />} />
+      <Route path="files" element={<Files />} />
+      <Route path="logout" element={<Logout />} />
     </Routes>
   );
 };
