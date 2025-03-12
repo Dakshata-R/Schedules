@@ -1,5 +1,6 @@
 // SchedulesTable.jsx
 import React, { useState } from "react";
+import SelectTemplate from "../../components/schedules_template/SelectTemplate";
 import {
   Box,
   Paper,
@@ -25,10 +26,11 @@ import {
   FilterList,
 } from "@mui/icons-material";
 
-const SchedulesTable = ({ onNewButtonClick }) => {
+const SchedulesTable = ({ onNewButtonClick, onTemplateSelect }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPriority, setFilterPriority] = useState("");
   const [filterType, setFilterType] = useState("");
+  const [openTemplateDialog, setOpenTemplateDialog] = useState(false);
 
   // Mock data for schedules
   const [schedules, setSchedules] = useState([
@@ -180,7 +182,7 @@ const SchedulesTable = ({ onNewButtonClick }) => {
           </Box>
           <Button
             variant="contained"
-            onClick={onNewButtonClick} // Use the passed prop here
+            onClick={() => setOpenTemplateDialog(true)}
             sx={{
               backgroundColor: "darkgreen", // Dark green color
               color: "white",
@@ -193,9 +195,14 @@ const SchedulesTable = ({ onNewButtonClick }) => {
               },
             }}
           >
-            +New Template
+            +New Schedule
           </Button>
         </Box>
+        <SelectTemplate 
+          open={openTemplateDialog} 
+          handleClose={() => setOpenTemplateDialog(false)}
+          onTemplateSelect={onTemplateSelect} // ✅ Ensure it's passed
+        />
 
         <Typography variant="body1" sx={{ marginBottom: "50px" }}>
           Keep track of schedules and their dates.
@@ -380,6 +387,8 @@ const SchedulesTable = ({ onNewButtonClick }) => {
         </Box>
       </Paper>
     </Box>
+    
+  
   );
 };
 

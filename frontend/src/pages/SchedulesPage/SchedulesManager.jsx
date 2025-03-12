@@ -1,17 +1,21 @@
 import React, { useState } from "react";
 import SchedulesTable from "./SchedulesTable";
-import TemplateCreation from "./TemplateCreation";
+import Template1 from "../../components/template/Template1";
+import SelectTemplate from "../../components/schedules_template/SelectTemplate";
+
 import { Box } from "@mui/material"; // Import Box for layout
 
 const SchedulesManager = () => {
-  const [showTemplateCreation, setShowTemplateCreation] = useState(false);
+  const [openTemplateDialog, setOpenTemplateDialog] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
 
   const handleNewButtonClick = () => {
-    setShowTemplateCreation(true);
+    setOpenTemplateDialog(true);
   };
 
-  const handleCloseTemplateCreation = () => {
-    setShowTemplateCreation(false);
+  const handleTemplateSelect = (templateName) => {
+    setSelectedTemplate(templateName);
+    setOpenTemplateDialog(false);
   };
 
   return (
@@ -21,10 +25,20 @@ const SchedulesManager = () => {
         marginTop: "30px", // Match the margin of SchedulesTable
       }}
     >
-      {showTemplateCreation ? (
-        <TemplateCreation onClose={handleCloseTemplateCreation} />
+      {selectedTemplate === "Slot Creation" ? (
+        <Template1 />
       ) : (
-        <SchedulesTable onNewButtonClick={handleNewButtonClick} />
+        <>
+          <SchedulesTable 
+            onNewButtonClick={handleNewButtonClick} 
+            onTemplateSelect={handleTemplateSelect} /
+          >
+          <SelectTemplate
+            open={openTemplateDialog}
+            handleClose={() => setOpenTemplateDialog(false)}
+            onTemplateSelect={handleTemplateSelect}
+          />
+        </>
       )}
     </Box>
   );

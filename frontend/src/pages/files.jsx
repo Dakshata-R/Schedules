@@ -1,5 +1,3 @@
-import Dropdown from "../components/schedules_template/Dropdown";
-
 const Files = () => {
     return (
       <div>

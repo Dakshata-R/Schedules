@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Box, TextField, Typography, Button, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, MenuItem, Select } from "@mui/material";
-import Add_venue_popup from "./Add_venue_popup";
+import Add_venue_popup from "../schedules_template/Add_venue_popup";
+import Preview_popup from "../schedules_template/Preview_popup";
 
-const Template_area = () => {
+const Template1 = () => {
   const [priority, setPriority] = useState(""); // State for priority selection
   const [frequency, setFrequency] = useState("Once"); // State for frequency selection
   const [slotDuration, setSlotDuration] = useState(""); // State for slot duration (empty initially)
@@ -15,6 +16,7 @@ const Template_area = () => {
   const [participants, setParticipants] = useState(""); // State for participants/roles
   const [slotsPerStudent, setSlotsPerStudent] = useState(""); // State for slots per student
   const [slotsPerFaculty, setSlotsPerFaculty] = useState(""); // State for slots per faculty
+  const [openPreview, setOpenPreview] = useState(false);
 
   // Function to calculate end date and time
   const calculateEndDateTime = () => {
@@ -92,25 +94,25 @@ const Template_area = () => {
     setVenuePopupOpen(false);};
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        width: "100%", // Full width
-        p: 3, // Padding around
-      }}
-    >
+    <Box >
       <Box
         sx={{
-          width: "90%", // Adjust width as needed
-          backgroundColor: "white",
-          borderRadius: 2,
-          boxShadow: 3,
-          p: 3, // Padding inside
+          width: "94%", // Ensure it takes full width of the parent
+          padding: "40px", // Match the padding of SchedulesTable
+          borderRadius: "15px",
+          boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
+          bgcolor: "white",
         }}
       >
+        <Box sx={{ display: "flex", justifyContent: "center" }}>
+        <Typography variant="h5" component="div" sx={{ fontWeight: 600}}>
+        Slot creation Template
+        </Typography>
+        </Box>
+
         {/* Schedule Template Name */}
-        <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
-          Schedule Template Name
+        <Typography variant="body1" sx={{ fontWeight: 400, mb: 1 , marginTop: "25px"}}>
+          Enter template Name
         </Typography>
         <TextField
           fullWidth
@@ -124,7 +126,7 @@ const Template_area = () => {
         />
 
         {/* Set Priority */}
-        <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+        <Typography variant="body1" sx={{ fontWeight: 400, mb: 1 }}>
           Set Priority
         </Typography>
         <Box sx={{ display: "flex", gap: 1 }}>
@@ -151,29 +153,12 @@ const Template_area = () => {
           ))}
         </Box>
 
-        {/* Frequency of Schedule */}
-        <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
-          Frequency of Schedule
-        </Typography>
-        <FormControl component="fieldset" fullWidth>
-          <RadioGroup
-            aria-label="frequency"
-            name="frequency"
-            value={frequency}
-            onChange={(e) => setFrequency(e.target.value)}
-            sx={{ display: "flex", flexDirection: "row", gap: 2 }}
-          >
-            <FormControlLabel value="Once" control={<Radio sx={{color: "darkgreen", "&.Mui-checked": {color: "darkgreen"}}}/>} label="Once" />
-            <FormControlLabel value="Weekly" control={<Radio sx={{color: "darkgreen", "&.Mui-checked": {color: "darkgreen"}}}/>} label="Weekly" />
-            <FormControlLabel value="Monthly" control={<Radio sx={{color: "darkgreen", "&.Mui-checked": {color: "darkgreen"}}}/>} label="Monthly" />
-          </RadioGroup>
-        </FormControl>
 
         {/* Set Slot Duration and Number of Slots */}
         <Box sx={{ display: "flex", gap: 4, mt: 2 }}>
           {/* Set Slot Duration */}
           <Box sx={{ flex: 1 }}>
-            <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+            <Typography variant="body1" sx={{ fontWeight: 400, mb: 1 }}>
               Set Slot Duration
             </Typography>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -209,7 +194,7 @@ const Template_area = () => {
 
           {/* Number of Slots */}
           <Box sx={{ flex: 1 }}>
-            <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+            <Typography variant="body1" sx={{ mb: 1 }}>
               Number of Slots
             </Typography>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -235,7 +220,7 @@ const Template_area = () => {
         <Box sx={{ display: "flex", gap: 4, mt: 2 }}>
           {/* Start Date-Time */}
           <Box sx={{ flex: 1 }}>
-            <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+            <Typography variant="body1" sx={{ mb: 1 }}>
               Start
             </Typography>
             <TextField
@@ -255,7 +240,7 @@ const Template_area = () => {
 
           {/* End Date-Time */}
           <Box sx={{ flex: 1 }}>
-            <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+            <Typography variant="body1" sx={{  mb: 1 }}>
               End
             </Typography>
             <TextField
@@ -276,7 +261,7 @@ const Template_area = () => {
 
         {/* Add Location/Venue Section */}
       <Box sx={{ mt: 2 }}>
-        <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+        <Typography variant="body1" sx={{  mb: 1 }}>
           Add Location/Venue
         </Typography>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -328,7 +313,7 @@ const Template_area = () => {
         <Box sx={{ display: "flex", gap: 4, mt: 2 }}>
           {/* Open to */}
           <Box sx={{ flex: 1 }}>
-            <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+            <Typography variant="body1" sx={{mb: 1 }}>
               Open to
             </Typography>
             <FormControl fullWidth>
@@ -354,7 +339,7 @@ const Template_area = () => {
 
           {/* Participants/Roles */}
           <Box sx={{ flex: 1 }}>
-            <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+            <Typography variant="body1" sx={{  mb: 1 }}>
               Participants/Roles
             </Typography>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -397,13 +382,13 @@ const Template_area = () => {
 
         {/* Set Criteria */}
         <Box sx={{ mt: 2 }}>
-          <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+          <Typography variant="body1" sx={{  mb: 1 }}>
             Set Criteria
           </Typography>
           <Box sx={{ display: "flex", gap: 4 }}>
             {/* No. of slots per student */}
             <Box sx={{ flex: 1 }}>
-              <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+              <Typography variant="body1" sx={{  mb: 1 }}>
                 No. of slots per student
               </Typography>
               <TextField
@@ -423,7 +408,7 @@ const Template_area = () => {
 
             {/* No. of slots per faculty */}
             <Box sx={{ flex: 1 }}>
-              <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+              <Typography variant="body1" sx={{  mb: 1 }}>
                 No. of slots per faculty
               </Typography>
               <TextField
@@ -442,9 +427,50 @@ const Template_area = () => {
             </Box>
           </Box>
         </Box>
+        
+        {/* Add "Create Draft" and "Preview" buttons */}
+        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 4 }}>
+          {/* Create Draft Button */}
+          <Button
+            variant="outlined"
+            sx={{
+              color: "red",
+              borderColor: "red",
+              "&:hover": {
+                borderColor: "red",
+                backgroundColor: "rgba(255, 0, 0, 0.04)", // Light red background on hover
+              },
+              borderRadius: 2,
+              textTransform: "none", // Prevent uppercase transformation
+              padding: "8px 24px", // Adjust padding for better appearance
+            }}
+          >
+            Create Draft
+          </Button>
+
+          {/* Preview Button */}
+          <Button
+            variant="contained"
+            sx={{
+              backgroundColor: "darkgreen",
+              color: "white",
+              "&:hover": {
+                backgroundColor: "green", // Slightly lighter green on hover
+              },
+              borderRadius: 2,
+              textTransform: "none", // Prevent uppercase transformation
+              padding: "8px 24px", // Adjust padding for better appearance
+            }}
+            onClick={() => setOpenPreview(true)} // Open Preview
+          >
+            Preview
+          </Button>
+        </Box>
+        {/* Preview Popup */}
+        <Preview_popup open={openPreview} onClose={() => setOpenPreview(false)} />
       </Box>
     </Box>
   );
 };
 
-export default Template_area;
+export default Template1;
