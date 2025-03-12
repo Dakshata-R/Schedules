@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import PersonIcon from "@mui/icons-material/Person";
+import ImageUploadLabel from "../ImageUploadLabel"; // Import the ImageUploadLabel component
 
 const Personal = ({ onUpdate }) => {
   const [formData, setFormData] = useState({
@@ -36,19 +37,12 @@ const Personal = ({ onUpdate }) => {
     onUpdate({ [name]: value });
   };
 
-  const handleImageUpload = (e, type) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prevState) => ({
-          ...prevState,
-          [type === "profile" ? "profileImage" : "coverImage"]: file, // Store file
-          [type === "profile" ? "profileImagePreview" : "coverImagePreview"]: reader.result, // Store preview
-        }));
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleImageUpload = (file) => {
+    setFormData((prevState) => ({
+      ...prevState,
+      profileImage: file,
+      profileImagePreview: URL.createObjectURL(file),
+    }));
   };
 
   const validateForm = () => {
@@ -389,64 +383,15 @@ const Personal = ({ onUpdate }) => {
 
         {/* Right Grid - Bulk Upload and Profile Image Section */}
         <Grid item xs={12} md={4} display="flex" flexDirection="column" alignItems="center">
-          {/* Bulk Upload Button */}
-          <Box sx={{ width: "100%", textAlign: "center", mb: 2 }}>
-            <Button
-              variant="contained"
-              component="label"
-              sx={{ backgroundColor: "green", color: "white" }}
-            >
-              Bulk Upload
-              <input type="file" hidden />
-            </Button>
-          </Box>
-
           {/* Profile Image Section */}
           <Typography variant="body1" fontWeight="bold" mb={1}>
             Add Profile Image
           </Typography>
-          <Box
-            sx={{
-              width: "200px",
-              height: "180px",
-              borderRadius: "12px",
-              backgroundColor: "#f5f5f5",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              textAlign: "center",
-              mt: 1,
-              border: "1px dashed gray",
-            }}
-          >
-            {formData.profileImagePreview ? (
-              <img
-                src={formData.profileImagePreview}
-                alt="Profile Preview"
-                style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "12px" }}
-              />
-            ) : (
-              <Typography variant="body2" color="gray" component="div">
-                Upload a profile image (jpg, png)
-                <Box display="block" mt={1}>
-                  <Button
-                    variant="contained"
-                    component="label"
-                    sx={{ backgroundColor: "green", color: "white" }}
-                    startIcon={<CloudUploadIcon />}
-                  >
-                    Upload Image
-                    <input
-                      type="file"
-                      hidden
-                      onChange={(e) => handleImageUpload(e, "profile")}
-                      accept="image/jpeg, image/png"
-                    />
-                  </Button>
-                </Box>
-              </Typography>
-            )}
-          </Box>
+          <ImageUploadLabel
+            onFileChange={handleImageUpload}
+            error={!!errors.profileImage}
+            helperText={errors.profileImage}
+          />
         </Grid>
       </Grid>
 

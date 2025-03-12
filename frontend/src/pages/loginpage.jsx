@@ -33,8 +33,8 @@ const AuthPage = () => {
       if (response.ok) {
         setMessage(data.message);
         if (!isRegister) {
-          localStorage.setItem("token", "dummy-token"); // Store a dummy token for now
-          localStorage.setItem("role", data.role); // Store the user's role from the response
+          localStorage.setItem("token", data.token); // Store the JWT token
+          localStorage.setItem("role", data.role); // Store the user's role
           navigate("/dashboard"); // Navigate to the dashboard after successful login
         }
       } else {

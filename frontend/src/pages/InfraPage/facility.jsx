@@ -146,16 +146,7 @@ const handleAddUser = (users) => {
           <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'gray' }}>
             Facility
           </Typography>
-          <Button
-            variant="contained"
-            sx={{
-              textTransform: 'none',
-              marginLeft: '500px',
-              backgroundColor: '#006400',
-            }}
-          >
-            Bulk Upload
-          </Button>
+          
         </Box>
         <Typography variant="h6" sx={{ marginBottom: '30px' }}>
           Roles who can use the venue

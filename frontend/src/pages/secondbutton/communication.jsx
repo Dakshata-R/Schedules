@@ -67,13 +67,7 @@ const Communication = ({ onUpdate3 }) => {
           <Typography variant="h6" fontWeight="bold">
             Communication Details
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<CloudUploadIcon />}
-            sx={{ backgroundColor: "green", color: "white" }}
-          >
-            Bulk upload
-          </Button>
+          
         </Grid>
 
         {/* Left Side - Mobile Numbers, Emails, and Location */}

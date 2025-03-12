@@ -10,8 +10,8 @@ import {
   MenuItem,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf"; // Red PDF icon
 import SchoolIcon from "@mui/icons-material/School";
+import ImageUploadLabel from "../ImageUploadLabel"; // Import the ImageUploadLabel component
 
 const Academic = ({ onUpdate }) => {
   const [formData, setFormData] = useState({
@@ -34,21 +34,9 @@ const Academic = ({ onUpdate }) => {
     onUpdate({ [name]: value });
   };
 
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setFormData({ ...formData, uploadedFile: file });
-      onUpdate({ uploadedFile: file });
-    }
-  };
-
-  const handleBulkUpload = (event) => {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      // Handle multiple files here
-      alert(`${files.length} files selected for bulk upload.`);
-      // You can process the files as needed, e.g., upload them to a server.
-    }
+  const handleFileUpload = (file) => {
+    setFormData({ ...formData, uploadedFile: file });
+    onUpdate({ uploadedFile: file });
   };
 
   const validateForm = () => {
@@ -70,8 +58,8 @@ const Academic = ({ onUpdate }) => {
 
     // Validate the form
     if (!validateForm()) {
-        alert("Please fill out all required fields correctly.");
-        return;
+      alert("Please fill out all required fields correctly.");
+      return;
     }
 
     // Create a FormData object to send the data
@@ -89,46 +77,46 @@ const Academic = ({ onUpdate }) => {
 
     // Append the uploaded file (if it exists)
     if (formData.uploadedFile) {
-        formDataToSend.append("file", formData.uploadedFile);
+      formDataToSend.append("file", formData.uploadedFile);
     } else {
-        alert("Please upload a PDF file.");
-        return;
+      alert("Please upload a PDF file.");
+      return;
     }
 
     try {
-        // Send the data to the backend
-        const response = await fetch("http://localhost:5000/api/academic", {
-            method: "POST",
-            body: formDataToSend,
-        });
+      // Send the data to the backend
+      const response = await fetch("http://localhost:5000/api/academic", {
+        method: "POST",
+        body: formDataToSend,
+      });
 
-        // Check if the response is successful
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || "Upload failed");
-        }
+      // Check if the response is successful
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Upload failed");
+      }
 
-        // Handle successful submission
-        console.log("Academic details and file uploaded successfully!");
-        alert("Academic details and file uploaded successfully!");
+      // Handle successful submission
+      console.log("Academic details and file uploaded successfully!");
+      alert("Academic details and file uploaded successfully!");
 
-        // Optionally, reset the form after successful submission
-        setFormData({
-            school: "",
-            tenthMarks: "",
-            tenthPercent: "",
-            twelfthMarks: "",
-            twelfthPercent: "",
-            schoolMedium: "",
-            department: "",
-            semesterGrade: "",
-            uploadedFile: null,
-        });
-        setErrors({});
+      // Optionally, reset the form after successful submission
+      setFormData({
+        school: "",
+        tenthMarks: "",
+        tenthPercent: "",
+        twelfthMarks: "",
+        twelfthPercent: "",
+        schoolMedium: "",
+        department: "",
+        semesterGrade: "",
+        uploadedFile: null,
+      });
+      setErrors({});
     } catch (error) {
-        // Handle errors
-        console.error("Upload failed:", error);
-        alert(`Upload failed: ${error.message}`);
+      // Handle errors
+      console.error("Upload failed:", error);
+      alert(`Upload failed: ${error.message}`);
     }
   };
 
@@ -359,62 +347,17 @@ const Academic = ({ onUpdate }) => {
 
         {/* Right Side - PDF Upload */}
         <Grid item xs={12} md={4} display="flex" flexDirection="column" alignItems="center">
-          {/* Bulk Upload Button */}
-          <Button
-            variant="contained"
-            component="label"
-            sx={{ 
-              backgroundColor: "green", 
-              color: "white", 
-              mb: 2,
-              '&:hover': { backgroundColor: "darkgreen" }
-            }}
-            startIcon={<CloudUploadIcon />}
-          >
-            Bulk Upload
-            <input type="file" hidden onChange={handleBulkUpload} multiple />
-          </Button>
-
           {/* Add documents (req) Text */}
           <Typography variant="body1" gutterBottom sx={{ fontWeight: "bold", textAlign: "center" }}>
             Add documents (req)
           </Typography>
 
-          {/* Grey Box Wrapper */}
-          <Box
-            sx={{
-              width: "200px",
-              height: "180px",
-              borderRadius: "12px",
-              backgroundColor: "#f5f5f5",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              textAlign: "center",
-              mt: 1,
-              border: "1px dashed gray",
-              flexDirection: "column",
-            }}
-          >
-            {/* Red PDF Icon */}
-            <PictureAsPdfIcon sx={{ fontSize: 50, color: "red" }} />
-
-            {/* Upload Button */}
-            <Typography variant="body2" color="gray" component="div" mt={1}>
-              Upload a PDF document (max 600x600)
-              <Box display="block" mt={1}>
-                <Button
-                  variant="contained"
-                  component="label"
-                  sx={{ backgroundColor: "green", color: "white" }}
-                  startIcon={<CloudUploadIcon />}
-                >
-                  Upload PDF
-                  <input type="file" hidden onChange={handleFileUpload} accept="application/pdf" />
-                </Button>
-              </Box>
-            </Typography>
-          </Box>
+          {/* Image Upload Section */}
+          <ImageUploadLabel
+            onFileChange={handleFileUpload}
+            error={!!errors.uploadedFile}
+            helperText={errors.uploadedFile}
+          />
 
           {/* Display Uploaded File Name */}
           {formData.uploadedFile && (
@@ -434,14 +377,14 @@ const Academic = ({ onUpdate }) => {
       </Grid>
 
       {/* Save & Next Button */}
-      <Button 
-        variant="contained" 
-        onClick={handleSubmit} 
-        sx={{ 
-            mt: 2, 
-            backgroundColor: "green !important", 
-            color: "white", 
-            '&:hover': { backgroundColor: "darkgreen !important" } 
+      <Button
+        variant="contained"
+        onClick={handleSubmit}
+        sx={{
+          mt: 2,
+          backgroundColor: "green !important",
+          color: "white",
+          "&:hover": { backgroundColor: "darkgreen !important" },
         }}
       >
         Save

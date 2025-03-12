@@ -3,7 +3,13 @@ import { Navigate, useLocation } from "react-router-dom";
 
 const ProtectedRoute = ({ allowedRoles, children }) => {
   const location = useLocation();
+  const token = localStorage.getItem("token"); // Get the token from localStorage
   const role = localStorage.getItem("role"); // Get the user's role from localStorage
+
+  // If no token, redirect to login
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
   // Check if the user's role is allowed
   if (!allowedRoles.includes(role)) {

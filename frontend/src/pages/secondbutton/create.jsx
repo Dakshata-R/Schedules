@@ -12,7 +12,7 @@ import ClassAdvisor from "./classadvisor";
 import Additional from "./additional";
 import Roles from "../RolesPage/roles";
 import Infrastructure from "../InfraPage/infra"; // Import the Infrastructure component
-
+import SchedulesManager from "../SchedulesPage/SchedulesManager";
 const Users = () => {
   const [selectedTab, setSelectedTab] = useState("users");
   const isMobile = useMediaQuery("(max-width: 600px)");
@@ -91,7 +91,8 @@ const Users = () => {
       {selectedTab === "additional" && <Additional />}
       {selectedTab === "classadvisor" && <ClassAdvisor />}
       {selectedTab === "roles" && <Roles />}
-      {selectedTab === "infrastructure" && <Infrastructure />} {/* Render Infrastructure component */}
+      {selectedTab === "infrastructure" && <Infrastructure />}
+      {selectedTab === "schedules" && <SchedulesManager />} {/* Render Infrastructure component */}
     </Box>
   );
 };

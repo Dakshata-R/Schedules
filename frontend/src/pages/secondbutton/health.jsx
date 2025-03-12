@@ -11,11 +11,8 @@ import {
   FormControl,
   FormLabel,
   TextField,
-  IconButton,
 } from '@mui/material';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import ImageUploadLabel from '../ImageUploadLabel'; // Import the ImageUploadLabel component
 
 const AccommodationForm = () => {
   const [disability, setDisability] = useState('No');
@@ -29,16 +26,9 @@ const AccommodationForm = () => {
     setError(''); // Clear error when user interacts with the field
   };
 
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      if (file.type !== 'application/pdf') {
-        alert('Only PDF files are allowed!');
-        return;
-      }
-      setUploadedFile(file);
-      setError(''); // Clear error when a file is uploaded
-    }
+  const handleFileUpload = (file) => {
+    setUploadedFile(file);
+    setError(''); // Clear error when a file is uploaded
   };
 
   const handleSave = async () => {
@@ -53,29 +43,17 @@ const AccommodationForm = () => {
 
     try {
       await axios.post('http://localhost:5000/api/health/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       setIsSaved(true);
     } catch (error) {
       console.error('Error uploading health details:', error);
       alert('Failed to save health details.');
     }
-   };
+  };
 
   return (
     <Box sx={{ padding: 3 }}>
-      {/* Bulk Upload Button (Green and Centered) */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 3 }}>
-        <Button
-          variant="contained"
-          component="label"
-          sx={{ backgroundColor: 'green', color: 'white' }}
-        >
-          Bulk Upload
-          <input type="file" hidden />
-        </Button>
-      </Box>
-
       {/* Health Details Section */}
       <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
         Health Details
@@ -87,18 +65,18 @@ const AccommodationForm = () => {
           <Grid item xs={12} md={8}>
             {/* Disability Section */}
             <FormControl component="fieldset" required>
-            <FormLabel
-              component="legend"
-              sx={{
-                fontWeight: 'bold',
-                fontSize: '1.1rem',
-                color: 'black',
-                '&.Mui-focused': { color: 'black' }, // Ensure it stays black when focused
-                '&.MuiFormLabel-root': { color: 'black' }, // Default color
-              }}
-            >
-              Any Disabilities
-            </FormLabel>
+              <FormLabel
+                component="legend"
+                sx={{
+                  fontWeight: 'bold',
+                  fontSize: '1.1rem',
+                  color: 'black',
+                  '&.Mui-focused': { color: 'black' }, // Ensure it stays black when focused
+                  '&.MuiFormLabel-root': { color: 'black' }, // Default color
+                }}
+              >
+                Any Disabilities
+              </FormLabel>
 
               <RadioGroup row value={disability} onChange={handleDisabilityChange}>
                 <FormControlLabel
@@ -136,20 +114,19 @@ const AccommodationForm = () => {
 
             {/* Save Button and Saved Message */}
             <Box sx={{ display: 'flex', alignItems: 'center', mt: 3, justifyContent: 'flex-start' }}>
-            <Button
-              variant="contained"
-              sx={{ backgroundColor: 'green', color: 'white', '&:hover': { backgroundColor: 'darkgreen' } }}
-              onClick={handleSave}
-            >
-              Save
-            </Button>
-            {isSaved && (
-              <Typography variant="body2" sx={{ ml: 2, color: 'green', fontWeight: 'bold' }}>
-                Saved!
-              </Typography>
-            )}
-          </Box>
-
+              <Button
+                variant="contained"
+                sx={{ backgroundColor: 'green', color: 'white', '&:hover': { backgroundColor: 'darkgreen' } }}
+                onClick={handleSave}
+              >
+                Save
+              </Button>
+              {isSaved && (
+                <Typography variant="body2" sx={{ ml: 2, color: 'green', fontWeight: 'bold' }}>
+                  Saved!
+                </Typography>
+              )}
+            </Box>
           </Grid>
 
           {/* Right Side - Image Upload Section */}
@@ -158,41 +135,12 @@ const AccommodationForm = () => {
               Add fitness certificate (Required)
             </Typography>
 
-            {/* Updated File Upload UI */}
-            <Box
-              sx={{
-                width: '200px',
-                height: '180px',
-                borderRadius: '12px',
-                backgroundColor: '#f5f5f5',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                textAlign: 'center',
-                mt: 1,
-                border: '1px dashed gray',
-                flexDirection: 'column',
-              }}
-            >
-              {/* Red PDF Icon */}
-              <PictureAsPdfIcon sx={{ fontSize: 50, color: 'red' }} />
-
-              {/* Upload Button */}
-              <Typography variant="body2" color="gray" component="div" mt={1}>
-                Upload a PDF document (max 600x600)
-                <Box display="block" mt={1}>
-                  <Button
-                    variant="contained"
-                    component="label"
-                    sx={{ backgroundColor: 'green', color: 'white' }}
-                    startIcon={<CloudUploadIcon />}
-                  >
-                    Upload PDF
-                    <input type="file" hidden onChange={handleFileUpload} accept="application/pdf" />
-                  </Button>
-                </Box>
-              </Typography>
-            </Box>
+            {/* Image Upload Section */}
+            <ImageUploadLabel
+              onFileChange={handleFileUpload}
+              error={!!error}
+              helperText={error}
+            />
 
             {/* Display Uploaded File Name */}
             {uploadedFile && (

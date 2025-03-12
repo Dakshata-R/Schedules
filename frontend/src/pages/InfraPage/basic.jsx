@@ -65,15 +65,7 @@ const Basic = ({ errors, setErrors, setBasicData }) => {
         <Typography variant="h5" sx={{ fontFamily: "Poppins, sans-serif", fontWeight: "bold" }}>
           Basic Details
         </Typography>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <Button
-            variant="contained"
-            startIcon={<CloudUploadIcon />}
-            sx={{ backgroundColor: "green", color: "white" }}
-          >
-            Bulk Upload
-          </Button>
-        </Box>
+       
         <Typography 
           variant="h6" 
           sx={{ 

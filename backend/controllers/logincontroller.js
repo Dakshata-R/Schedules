@@ -1,5 +1,6 @@
 const User = require("../models/loginmodal");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 // Register a new user
 const register = async (req, res) => {
@@ -42,8 +43,13 @@ const login = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // Send success response with role
-    res.status(200).json({ message: "Login successful", role: user.role });
+    // Generate a JWT token
+    const token = jwt.sign({ id: user.id, role: user.role }, "your-secret-key", {
+      expiresIn: "1h",
+    });
+
+    // Send success response with token and role
+    res.status(200).json({ message: "Login successful", token, role: user.role });
   } catch (error) {
     console.error("Error in login:", error);
     res.status(500).json({ message: "Server error", error: error.message });

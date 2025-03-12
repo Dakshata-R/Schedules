@@ -12,7 +12,17 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  Grid,
+  Typography,
+  InputAdornment,
+  Chip,
 } from "@mui/material";
+import { Search } from "@mui/icons-material";
 import CheckIcon from "@mui/icons-material/Check";
 import Personal from "./personal";
 import Academic from "./academics";
@@ -53,7 +63,14 @@ const UserInput = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({});
   const [isFormStarted, setIsFormStarted] = useState(false);
-  const [fetchedData, setFetchedData] = useState([]); // State to store fetched data
+  const [fetchedData, setFetchedData] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+  const [displayedUsers, setDisplayedUsers] = useState([]);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage] = useState(7);
 
   // Fetch data from the backend
   useEffect(() => {
@@ -63,6 +80,7 @@ const UserInput = () => {
         if (response.ok) {
           const data = await response.json();
           setFetchedData(data);
+          setDisplayedUsers(data);
         } else {
           console.error("Failed to fetch data");
         }
@@ -73,6 +91,52 @@ const UserInput = () => {
 
     fetchData();
   }, []);
+
+  // Filter users based on search query and category
+  const filterUsers = () => {
+    const filtered = fetchedData.filter((user) => {
+      const userString = JSON.stringify(user).toLowerCase();
+      const matchesSearchQuery = userString.includes(searchQuery.toLowerCase());
+      const matchesCategory = filterCategory
+        ? user.role === filterCategory
+        : true;
+      return matchesSearchQuery && matchesCategory;
+    });
+
+    setDisplayedUsers(filtered);
+    setCurrentPage(1);
+  };
+
+  // Reset to show all users
+  const handleViewAll = () => {
+    setSearchQuery("");
+    setFilterCategory("");
+    setDisplayedUsers(fetchedData);
+    setCurrentPage(1);
+  };
+
+  // Re-filter users whenever searchQuery or filterCategory changes
+  useEffect(() => {
+    filterUsers();
+  }, [searchQuery, filterCategory]);
+
+  // Handle pagination
+  const handleNextPage = () => {
+    setCurrentPage((prevPage) => prevPage + 1);
+  };
+
+  const handlePreviousPage = () => {
+    setCurrentPage((prevPage) => prevPage - 1);
+  };
+
+  // Calculate the total number of pages
+  const totalPages = Math.ceil(displayedUsers.length / rowsPerPage);
+
+  // Slice the displayedUsers array to show only the rows for the current page
+  const paginatedUsers = displayedUsers.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
 
   const handleNext = () => {
     if (activeStep < steps.length - 1) {
@@ -89,27 +153,48 @@ const UserInput = () => {
   };
 
   const handleCreate = async () => {
-    setIsFormStarted(true); // Start the form
-    if (activeStep === steps.length - 1) {
-      try {
-        const combinedData = { ...formData };
-        const response = await fetch("http://localhost:5000/api/save-student", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(combinedData),
-        });
+    try {
+      const combinedData = { ...formData };
+      const response = await fetch("http://localhost:5000/api/save-student", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(combinedData),
+      });
 
-        if (response.ok) {
-          console.log("Final Save:", combinedData);
-          alert("Student data saved successfully!");
-        } else {
-          const errorData = await response.json();
-          alert(`Failed to save student data: ${errorData.message || "Unknown error"}`);
-        }
-      } catch (error) {
-        console.error("Error saving final form data:", error);
-        alert("An error occurred while saving the data.");
+      if (response.ok) {
+        console.log("Final Save:", combinedData);
+        setIsFormStarted(false);
+        setActiveStep(0);
+        setFormData({});
+        fetchData();
+      } else {
+        const errorData = await response.json();
+        console.error("Failed to save student data:", errorData.message || "Unknown error");
       }
+    } catch (error) {
+      console.error("Error saving final form data:", error);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    try {
+      const combinedData = { ...formData };
+      const response = await fetch("http://localhost:5000/api/save-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(combinedData),
+      });
+
+      if (response.ok) {
+        console.log("Draft Saved:", combinedData);
+        alert("Draft saved successfully!");
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to save draft: ${errorData.message || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Error saving draft:", error);
+      alert("An error occurred while saving the draft.");
     }
   };
 
@@ -126,102 +211,255 @@ const UserInput = () => {
         marginTop: "20px",
       }}
     >
-      {/* Create Button */}
-      <Box sx={{ display: "flex", justifyContent: "flex-end", marginBottom: "20px" }}>
-        <Button
-          variant="contained"
-          sx={{
-            backgroundColor: "#4caf50",
-            color: "white",
-            width: "10%",
-            textTransform: "none",
-            "&:hover": { backgroundColor: "#45a049" },
-          }}
-          onClick={handleCreate}
-        >
-          + User
-        </Button>
-      </Box>
-
-      {/* Display Fetched Data in a Table (Only when form is not started) */}
+      {/* Create Button (Only when form is not started) */}
       {!isFormStarted && (
-        <TableContainer component={Paper} sx={{ marginBottom: "20px" }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>User ID</TableCell>
-                <TableCell>Username</TableCell>
-                <TableCell>Date of Birth</TableCell>
-                <TableCell>Blood Group</TableCell>
-                <TableCell>Contact Number</TableCell>
-                <TableCell>Class Advisor</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {fetchedData.map((row, index) => (
-                <TableRow key={index}>
-                  <TableCell>{row.userId}</TableCell>
-                  <TableCell>{row.username}</TableCell>
-                  <TableCell>{row.dob}</TableCell>
-                  <TableCell>{row.bloodGroup}</TableCell>
-                  <TableCell>{row.contactNumber1}</TableCell>
-                  <TableCell>{row.classAdvisor}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Box sx={{ display: "flex", justifyContent: "flex-end", marginBottom: "20px" }}>
+          <Button
+            variant="contained"
+            sx={{
+              backgroundColor: "#4caf50",
+              color: "white",
+              width: "10%",
+              textTransform: "none",
+              "&:hover": { backgroundColor: "#45a049" },
+            }}
+            onClick={() => setIsFormStarted(true)}
+          >
+            + User
+          </Button>
+        </Box>
       )}
 
-      {/* Stepper (Only when form is started) */}
-      {isFormStarted && (
-        <Stepper alternativeLabel activeStep={activeStep} sx={{ width: "100%" }}>
-          {steps.map((step, index) => (
-            <Step key={step.id} onClick={() => setActiveStep(index)} sx={{ cursor: "pointer" }}>
-              <StepLabel
-                StepIconComponent={(props) => <CustomStepIcon {...props} icon={index + 1} />}
+      {/* User List and Details Section */}
+      {!isFormStarted && (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          {/* User List Header */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: "7px" }}>
+            <Typography variant="h5" component="div">
+              User list
+            </Typography>
+            <Chip
+              label={`${fetchedData.length} Roles`}
+              sx={{ backgroundColor: "#e3f2fd", color: "#1976d2" }}
+            />
+          </Box>
+
+          <Typography variant="body1">
+            Keep track of Roles and permissions
+          </Typography>
+
+          {/* Search and Filter Section */}
+          <Grid container spacing={2}>
+            {/* View All Button and Category Filter on the Left */}
+            <Grid item xs={4} sx={{ display: "flex", gap: "10px" }}>
+              <Button
+                variant="contained"
+                onClick={handleViewAll}
                 sx={{
-                  "& .MuiStepLabel-label": {
-                    color: activeStep === index ? "green" : "black",
-                    fontWeight: activeStep === index ? "bold" : "normal",
+                  backgroundColor: "#f8f8f8",
+                  color: "black",
+                  textTransform: "none",
+                  fontSize: "1rem",
+                  padding: "10px 20px",
+                  "&:hover": {
+                    backgroundColor: "#e0e0e0",
                   },
                 }}
               >
-                {step.label}
-              </StepLabel>
-            </Step>
-          ))}
-        </Stepper>
-      )}
+                View All
+              </Button>
+              <FormControl sx={{ minWidth: 150 }}>
+                <InputLabel>Category</InputLabel>
+                <Select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  label="Category"
+                >
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="Student">Student</MenuItem>
+                  <MenuItem value="Faculty">Faculty</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
 
-      {/* Form Content (Only when form is started) */}
-      {isFormStarted && (
-        <Box sx={{ marginTop: "20px" }}>
-          {activeStep === 0 && <Personal onUpdate={handleUpdate} />}
-          {activeStep === 1 && <Academic onUpdate={handleUpdate} />}
-          {activeStep === 2 && <Communication onUpdate={handleUpdate} />}
-          {activeStep === 3 && <ClassAdvisor onUpdate={handleUpdate} />}
-          {activeStep === 4 && <Health onUpdate={handleUpdate} />}
-          {activeStep === 5 && <Additional onUpdate={handleUpdate} />}
+            {/* Search and Filter on the Right */}
+            <Grid item xs={8} sx={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <TextField
+                fullWidth
+                variant="outlined"
+                placeholder="Search users..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                sx={{ maxWidth: "600px" }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+          </Grid>
+
+          {/* Display Users in a Table */}
+          
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>User ID</TableCell>
+                  <TableCell>Username</TableCell>
+                  <TableCell>Date of Birth</TableCell>
+                  <TableCell>Blood Group</TableCell>
+                  <TableCell>Contact Number</TableCell>
+                  <TableCell>Class Advisor</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {paginatedUsers.map((user) => (
+                  <TableRow key={user.userId}>
+                    <TableCell>{user.userId}</TableCell>
+                    <TableCell>{user.username}</TableCell>
+                    <TableCell>{user.dob}</TableCell>
+                    <TableCell>{user.bloodGroup}</TableCell>
+                    <TableCell>{user.contactNumber1}</TableCell>
+                    <TableCell>{user.classAdvisor}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          
+
+          {/* Pagination Controls */}
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginTop: "20px",
+              padding: "10px",
+              borderTop: "1px solid #e0e0e0",
+            }}
+          >
+            {/* Page Number Display on the Left */}
+            <Typography variant="body2" sx={{ color: "grey" }}>
+              Page {currentPage} of {totalPages}
+            </Typography>
+
+            {/* Previous and Next Buttons in a Container on the Right */}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                backgroundColor: "white",
+                borderRadius: "8px",
+                padding: "8px 16px",
+                boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+              }}
+            >
+              <Button
+                onClick={handlePreviousPage}
+                disabled={currentPage === 1}
+                sx={{
+                  color: "grey",
+                  textTransform: "none",
+                  minWidth: "auto",
+                  "&:disabled": {
+                    color: "#e0e0e0",
+                  },
+                }}
+              >
+                Previous
+              </Button>
+              <Button
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+                sx={{
+                  color: "grey",
+                  textTransform: "none",
+                  minWidth: "auto",
+                  "&:disabled": {
+                    color: "#e0e0e0",
+                  },
+                }}
+              >
+                Next
+              </Button>
+            </Box>
+          </Box>
         </Box>
       )}
 
-      {/* Navigation Buttons (Only when form is started) */}
+      {/* Stepper and Form Content (Only when form is started) */}
       {isFormStarted && (
-        <Box sx={{ display: "flex", justifyContent: "space-between", marginTop: "20px" }}>
-          <Button variant="contained" onClick={handleBack} disabled={activeStep === 0}>
-            Back
-          </Button>
-          {activeStep === steps.length - 1 ? (
-            <Button variant="contained" color="success" onClick={handleCreate}>
-              Save
+        <>
+          {/* Draft and Create Buttons at Top-Right Corner */}
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, marginBottom: "20px" }}>
+            <Button
+              variant="contained"
+              sx={{
+                backgroundColor: "#e0e0e0",
+                color: "black",
+                "&:hover": { backgroundColor: "#bdbdbd" },
+              }}
+              onClick={handleSaveDraft}
+            >
+              Draft
             </Button>
-          ) : (
-            <Button variant="contained" color="primary" onClick={handleNext}>
-              Save & Next
+            <Button
+              variant="contained"
+              sx={{
+                backgroundColor: "green",
+                color: "white",
+                "&:hover": { backgroundColor: "darkgreen" },
+              }}
+              onClick={handleCreate}
+            >
+              Create
             </Button>
-          )}
-        </Box>
+          </Box>
+
+          <Stepper alternativeLabel activeStep={activeStep} sx={{ width: "100%" }}>
+            {steps.map((step, index) => (
+              <Step key={step.id} onClick={() => setActiveStep(index)} sx={{ cursor: "pointer" }}>
+                <StepLabel
+                  StepIconComponent={(props) => <CustomStepIcon {...props} icon={index + 1} />}
+                  sx={{
+                    "& .MuiStepLabel-label": {
+                      color: activeStep === index ? "green" : "black",
+                      fontWeight: activeStep === index ? "bold" : "normal",
+                    },
+                  }}
+                >
+                  {step.label}
+                </StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+
+          {/* Form Content */}
+          <Box sx={{ marginTop: "20px" }}>
+            {activeStep === 0 && <Personal onUpdate={handleUpdate} />}
+            {activeStep === 1 && <Academic onUpdate={handleUpdate} />}
+            {activeStep === 2 && <Communication onUpdate={handleUpdate} />}
+            {activeStep === 3 && <ClassAdvisor onUpdate={handleUpdate} />}
+            {activeStep === 4 && <Health onUpdate={handleUpdate} />}
+            {activeStep === 5 && <Additional onUpdate={handleUpdate} />}
+          </Box>
+
+          {/* Navigation Buttons */}
+          <Box sx={{ display: "flex", justifyContent: "space-between", marginTop: "20px" }}>
+            <Button variant="contained" onClick={handleBack} disabled={activeStep === 0}>
+              Back
+            </Button>
+            {activeStep < steps.length - 1 && (
+              <Button variant="contained" color="primary" onClick={handleNext}>
+                Save & Next
+              </Button>
+            )}
+          </Box>
+        </>
       )}
     </Paper>
   );

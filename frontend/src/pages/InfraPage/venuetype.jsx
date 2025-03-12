@@ -55,18 +55,7 @@ const VenueType = ({ errors, setVenueTypeData, venueTypeData }) => {
               <Typography fontSize={"19px"} sx={{ fontWeight: "bold", marginBottom: "10px" }}>
                 Capacity of venue
               </Typography>
-              <Button
-                variant="contained"
-                startIcon={<CloudUpload />}
-                sx={{
-                  textTransform: "none",
-                  backgroundColor: "#006400",
-                  marginLeft: "3in", // Move the button 3 inches to the right
-                  marginTop: "-1in", // Move the button 1 inch up
-                }}
-              >
-                Bulk Upload
-              </Button>
+              
             </Box>
             <Select
               fullWidth

@@ -12,7 +12,7 @@ const healthRoutes = require('./routes/healthRoutes'); // 👈 Correct import fo
 const additionalRoutes = require('./routes/additionalRoutes'); // 👈 Import additionalRoutes
 const combinedDataRoutes = require('./routes/combinedDataRoutes');
 const authRoutes = require("./routes/loginroutes");
-
+const venueRoutes = require('./routes/venueRoutes');
 const app = express();
 const port = 5000;
 
@@ -33,6 +33,7 @@ app.use('/api', healthRoutes); // 👈 Use healthRoutes
 app.use('/api', additionalRoutes); 
 app.use('/api', combinedDataRoutes);
 app.use("/api/auth", authRoutes);
+app.use('/api', venueRoutes);
 // 👈 Use additionalRoutes
 
 // Start the server
