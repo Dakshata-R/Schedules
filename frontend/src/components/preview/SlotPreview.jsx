@@ -14,9 +14,9 @@ import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
-import Calendar from "./Calendar"; // Ensure this path is correct
+import Calendar from "../schedules_template/Calendar"
 
-const Preview_popup = ({ open, onClose }) => {
+const SlotPreview = ({ open, onClose }) => {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const startDate = new Date(2025, 0, 14); // 14/01/2025
   const dayCount = 3; // Number of days to highlight
@@ -282,4 +282,4 @@ const Preview_popup = ({ open, onClose }) => {
   );
 };
 
-export default Preview_popup;
+export default SlotPreview;

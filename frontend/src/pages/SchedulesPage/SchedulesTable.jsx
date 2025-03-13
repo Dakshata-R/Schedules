@@ -147,19 +147,10 @@ const SchedulesTable = ({ onNewButtonClick, onTemplateSelect }) => {
   return (
     <Box
       sx={{
-        width: "100%",
+        padding: "30px"
       }}
     >
-      <Paper
-        sx={{
-          padding: "40px",
-          borderRadius: "15px",
-          boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
-          position: "relative",
-          width: "94%",
-          minHeight: "300px",
-        }}
-      >
+      
         {/* Schedules List Heading with Schedule Count and +New Button */}
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: "16px" }}>
@@ -385,7 +376,7 @@ const SchedulesTable = ({ onNewButtonClick, onTemplateSelect }) => {
             </Button>
           </Box>
         </Box>
-      </Paper>
+      
     </Box>
     
   

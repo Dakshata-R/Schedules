@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Box, TextField, Typography, Button, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, MenuItem, Select } from "@mui/material";
 import Add_venue_popup from "../schedules_template/Add_venue_popup";
-import Preview_popup from "../schedules_template/Preview_popup";
+import SlotPreview from "../preview/SlotPreview";
 
-const Template1 = () => {
+const SlotTemplate = ({ onCancel }) => {
   const [priority, setPriority] = useState(""); // State for priority selection
   const [frequency, setFrequency] = useState("Once"); // State for frequency selection
   const [slotDuration, setSlotDuration] = useState(""); // State for slot duration (empty initially)
@@ -97,11 +97,7 @@ const Template1 = () => {
     <Box >
       <Box
         sx={{
-          width: "94%", // Ensure it takes full width of the parent
-          padding: "40px", // Match the padding of SchedulesTable
-          borderRadius: "15px",
-          boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
-          bgcolor: "white",
+          padding: "40px"
         }}
       >
         <Box sx={{ display: "flex", justifyContent: "center" }}>
@@ -428,8 +424,27 @@ const Template1 = () => {
           </Box>
         </Box>
         
-        {/* Add "Create Draft" and "Preview" buttons */}
+        {/* Add "Cancel", "Create Draft", and "Preview" buttons */}
         <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 4 }}>
+          {/* Cancel Button */}
+          <Button
+            variant="outlined"
+            onClick={onCancel} // Call onCancel to go back to SchedulesTable
+            sx={{
+              color: "red",
+              borderColor: "red",
+              "&:hover": {
+                borderColor: "red",
+                backgroundColor: "rgba(255, 0, 0, 0.04)", // Light red background on hover
+              },
+              borderRadius: 2,
+              textTransform: "none", // Prevent uppercase transformation
+              padding: "8px 24px", // Adjust padding for better appearance
+            }}
+          >
+            Cancel
+          </Button>
+
           {/* Create Draft Button */}
           <Button
             variant="outlined"
@@ -466,11 +481,12 @@ const Template1 = () => {
             Preview
           </Button>
         </Box>
+
         {/* Preview Popup */}
-        <Preview_popup open={openPreview} onClose={() => setOpenPreview(false)} />
+        <SlotPreview open={openPreview} onClose={() => setOpenPreview(false)} />
       </Box>
     </Box>
   );
 };
 
-export default Template1;
+export default SlotTemplate;

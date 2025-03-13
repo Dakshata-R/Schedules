@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import SchedulesTable from "./SchedulesTable";
-import Template1 from "../../components/template/Template1";
+import SlotTemplate from "../../components/template/SlotTemplate";
+import SkillTemplate from "../../components/template/SkillTemplate";
 import SelectTemplate from "../../components/schedules_template/SelectTemplate";
 
 import { Box } from "@mui/material"; // Import Box for layout
@@ -18,15 +19,27 @@ const SchedulesManager = () => {
     setOpenTemplateDialog(false);
   };
 
+  // Function to handle cancel and go back to SchedulesTable
+  const handleCancel = () => {
+    setSelectedTemplate(null); // Reset selectedTemplate to go back to SchedulesTable
+  };
+
   return (
     <Box
       sx={{
-        width: "70%", // Match the width of SchedulesTable
-        marginTop: "30px", // Match the margin of SchedulesTable
+        width: "70%",
+        backgroundColor: "#fff",
+        borderRadius: "12px",
+        padding: "20px",
+        boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
+
+        marginTop: "20px",
       }}
     >
       {selectedTemplate === "Slot Creation" ? (
-        <Template1 />
+        <SlotTemplate onCancel={handleCancel}/>
+      ) : selectedTemplate === "Skill Schedule" ? (
+        <SkillTemplate onCancel={handleCancel}/>
       ) : (
         <>
           <SchedulesTable 
