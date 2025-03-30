@@ -13,6 +13,14 @@ const additionalRoutes = require('./routes/additionalRoutes'); // 👈 Import ad
 const combinedDataRoutes = require('./routes/combinedDataRoutes');
 const authRoutes = require("./routes/loginroutes");
 const venueRoutes = require('./routes/venueRoutes');
+const RequestRoutes = require('./routes/RequestRoutes'); 
+const nameRoutes = require("./routes/nameRoutes");
+const facultyRoutes = require('./routes/facultyRoutes');
+const permissionsRoutes = require('./routes/permissionsRoutes');
+const studentRequestsRoutes = require('./routes/studentRequestsRoutes');
+
+
+
 const app = express();
 const port = 5000;
 
@@ -34,6 +42,11 @@ app.use('/api', additionalRoutes);
 app.use('/api', combinedDataRoutes);
 app.use("/api/auth", authRoutes);
 app.use('/api', venueRoutes);
+app.use('/api', RequestRoutes);
+app.use("/api", nameRoutes);
+app.use('/api/faculty', facultyRoutes);
+app.use('/api/permissions', permissionsRoutes);
+app.use('/api/student-requests', studentRequestsRoutes);
 // 👈 Use additionalRoutes
 
 // Start the server

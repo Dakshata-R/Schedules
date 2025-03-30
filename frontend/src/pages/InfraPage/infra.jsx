@@ -504,7 +504,7 @@ const Infra = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {paginatedData.map((row) => (
+                                {paginatedData.map((row) => (
                   <TableRow key={row.uniqueId}>
                     <TableCell>{row.uniqueId}</TableCell>
                     <TableCell>{row.venueName}</TableCell>

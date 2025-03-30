@@ -1,4 +1,4 @@
-const db = require('../config/roles_db'); // Import the db connection
+const db = require('../config/roles_db');
 
 exports.saveRole = (roleName, priority, members, permissions, callback) => {
   const roleQuery = 'INSERT INTO roles (role_name, priority) VALUES (?, ?)';

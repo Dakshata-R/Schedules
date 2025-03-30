@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Box, TextField, Typography, Button, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, MenuItem, Select } from "@mui/material";
 import Add_venue_popup from "../schedules_template/Add_venue_popup";
-import Preview_popup from "../schedules_template/Preview_popup";
+import SlotPreview from "../preview/SlotPreview";
+import Add_Faculty_popup from "../schedules_template/Add_Faculty_popup";
 
-const Template1 = () => {
+const SlotTemplate = ({ onCancel }) => {
   const [priority, setPriority] = useState(""); // State for priority selection
   const [frequency, setFrequency] = useState("Once"); // State for frequency selection
   const [slotDuration, setSlotDuration] = useState(""); // State for slot duration (empty initially)
@@ -13,10 +14,12 @@ const Template1 = () => {
   const [endDateTime, setEndDateTime] = useState(""); // State for end date-time
   const [venue, setVenue] = useState(""); // State for venue
   const [openTo, setOpenTo] = useState("All students"); // State for "Open to" dropdown
-  const [participants, setParticipants] = useState(""); // State for participants/roles
   const [slotsPerStudent, setSlotsPerStudent] = useState(""); // State for slots per student
-  const [slotsPerFaculty, setSlotsPerFaculty] = useState(""); // State for slots per faculty
   const [openPreview, setOpenPreview] = useState(false);
+  const [selectedVenues, setSelectedVenues] = useState([]);
+  const [facultyPopupOpen, setFacultyPopupOpen] = useState(false);
+  const [selectedFaculties, setSelectedFaculties] = useState([]); // State for selected faculties
+  const [availableFaculties, setAvailableFaculties] = useState([]); // State for available faculties
 
   // Function to calculate end date and time
   const calculateEndDateTime = () => {
@@ -72,46 +75,34 @@ const Template1 = () => {
   }, [slotDuration, numberOfSlots, startDateTime, durationUnit]);
 
   const [venuePopupOpen, setVenuePopupOpen] = useState(false);
-  const [selectedVenues, setSelectedVenues] = useState([]);
-
-  // Dummy venues data
-  const venues = [
-    { id: 1, name: "SF Seminar hall", capacity: "300", type: "Seminar Hall" },
-    { id: 2, name: "WW101", capacity: "60", type: "Lab" },
-    { id: 3, name: "IT lab 01", capacity: "60 per lab", type: "Lab" },
-    { id: 4, name: "Mech Drawing hall", capacity: "100", type: "Drawing Hall" },
-    { id: 5, name: "Textile seminar hall", capacity: "100", type: "Seminar Hall" },
-    { id: 6, name: "EEE Seminar hall", capacity: "300", type: "Seminar Hall" },
-    { id: 7, name: "EW101", capacity: "60", type: "Lab" },
-    { id: 8, name: "CSE lab 01", capacity: "60 per lab", type: "Lab" },
-    { id: 9, name: "SF Drawing hall", capacity: "100", type: "Drawing Hall" },
-    { id: 10, name: "CSE seminar hall", capacity: "100", type: "Seminar Hall" }, 
-  ];
 
   // Handle venue selection from popup
   const handleVenueSelection = (selectedVenues) => {
-    setSelectedVenues(selectedVenues);
-    setVenuePopupOpen(false);};
+    setSelectedVenues(selectedVenues); // Update the selected venues state
+    setVenuePopupOpen(false); // Close the popup
+  };
+
+  // Handle faculty selection from popup
+  const handleFacultySelection = (selectedFacultyNames) => {
+    setSelectedFaculties(selectedFacultyNames); // Update the selected faculties state
+    setFacultyPopupOpen(false); // Close the popup
+  };
 
   return (
-    <Box >
+    <Box>
       <Box
         sx={{
-          width: "94%", // Ensure it takes full width of the parent
-          padding: "40px", // Match the padding of SchedulesTable
-          borderRadius: "15px",
-          boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
-          bgcolor: "white",
+          padding: "40px"
         }}
       >
         <Box sx={{ display: "flex", justifyContent: "center" }}>
-        <Typography variant="h5" component="div" sx={{ fontWeight: 600}}>
-        Slot creation Template
-        </Typography>
+          <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
+            Slot creation Template
+          </Typography>
         </Box>
 
         {/* Schedule Template Name */}
-        <Typography variant="body1" sx={{ fontWeight: 400, mb: 1 , marginTop: "25px"}}>
+        <Typography variant="body1" sx={{ fontWeight: 400, mb: 1, marginTop: "25px" }}>
           Enter template Name
         </Typography>
         <TextField
@@ -152,7 +143,6 @@ const Template1 = () => {
             </Button>
           ))}
         </Box>
-
 
         {/* Set Slot Duration and Number of Slots */}
         <Box sx={{ display: "flex", gap: 4, mt: 2 }}>
@@ -240,7 +230,7 @@ const Template1 = () => {
 
           {/* End Date-Time */}
           <Box sx={{ flex: 1 }}>
-            <Typography variant="body1" sx={{  mb: 1 }}>
+            <Typography variant="body1" sx={{ mb: 1 }}>
               End
             </Typography>
             <TextField
@@ -259,177 +249,178 @@ const Template1 = () => {
           </Box>
         </Box>
 
-        {/* Add Location/Venue Section */}
-      <Box sx={{ mt: 2 }}>
-        <Typography variant="body1" sx={{  mb: 1 }}>
-          Add Location/Venue
-        </Typography>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        {/* Open to */}
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="body1" sx={{ mb: 1 }}>
+            Open to
+          </Typography>
+          <FormControl fullWidth>
+            <Select
+              value={openTo}
+              onChange={(e) => setOpenTo(e.target.value)}
+              sx={{
+                backgroundColor: "#f8f9fa",
+                borderRadius: 1,
+                height: "40px", // Explicitly set the height to match other fields
+                "& .MuiInputBase-root": {
+                  height: "40px", // Ensure the inner input root also has the same height
+                },
+              }}
+            >
+              <MenuItem value="All students">All students</MenuItem>
+              <MenuItem value="1st Year">1st Year</MenuItem>
+              <MenuItem value="2nd Year">2nd Year</MenuItem>
+              <MenuItem value="3rd Year">3rd Year</MenuItem>
+              <MenuItem value="Final Year">Final Year</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+
+        {/* No. of slots per student */}
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="body1" sx={{ mb: 1 }}>
+            No. of slots per student
+          </Typography>
           <TextField
-            fullWidth
-            placeholder="Venue"
-            value={selectedVenues.map((venue) => venue.name).join(", ")}
+            type="number"
+            value={slotsPerStudent}
+            onChange={(e) => setSlotsPerStudent(e.target.value)}
             sx={{
+              width: "100%",
               backgroundColor: "#f8f9fa",
               borderRadius: 1,
               "& .MuiInputBase-root": {
-                height: "40px",
+                height: "40px", // Reduced height
               },
-            }}
-            InputProps={{
-              endAdornment: (
-                <Button
-                  variant="contained"
-                  sx={{
-                    backgroundColor: "white",
-                    color: "darkgreen",
-                    border: "1px solid darkgreen",
-                    height: "30px",
-                    minWidth: "20%",
-                    "&:hover": {
-                      backgroundColor: "darkgreen",
-                      color: "white",
-                    },
-                  }}
-                  onClick={() => setVenuePopupOpen(true)} // Open the popup
-                >
-                  Add Venue
-                </Button>
-              ),
             }}
           />
         </Box>
-      </Box>
 
-      {/* Add Venue Popup */}
-      <Add_venue_popup
-        open={venuePopupOpen}
-        onClose={handleVenueSelection}
-        venues={venues}
-      />
-
-
-        {/* Open to and Participants/Roles */}
-        <Box sx={{ display: "flex", gap: 4, mt: 2 }}>
-          {/* Open to */}
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="body1" sx={{mb: 1 }}>
-              Open to
-            </Typography>
-            <FormControl fullWidth>
-              <Select
-                value={openTo}
-                onChange={(e) => setOpenTo(e.target.value)}
-                sx={{
-                  backgroundColor: "#f8f9fa",
-                  borderRadius: 1,
-                  "& .MuiInputBase-root": {
-                    height: "36px", // Reduced height
-                  },
-                }}
-              >
-                <MenuItem value="All students">All students</MenuItem>
-                <MenuItem value="1st Year">1st Year</MenuItem>
-                <MenuItem value="2nd Year">2nd Year</MenuItem>
-                <MenuItem value="3rd Year">3rd Year</MenuItem>
-                <MenuItem value="Final Year">Final Year</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-
-          {/* Participants/Roles */}
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="body1" sx={{  mb: 1 }}>
-              Participants/Roles
-            </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <TextField
-                fullWidth
-                placeholder="Participants/Roles"
-                value={participants}
-                onChange={(e) => setParticipants(e.target.value)}
-                sx={{
-                  backgroundColor: "#f8f9fa",
-                  borderRadius: 1,
-                  "& .MuiInputBase-root": {
-                    height: "40px", // Reduced height
-                  },
-                }}
-                InputProps={{
-                  endAdornment: (
-                    <Button
-                      variant="contained"
-                      sx={{
-                        backgroundColor: "white",
-                        color: "darkgreen",
-                        border: "1px solid darkgreen",
-                        height: "30px", // Reduced height
-                        minWidth: "10%", // Adjusted width
-                        "&:hover": {
-                          backgroundColor: "darkgreen",
-                          color: "white",
-                        },
-                      }}
-                    >
-                      Add
-                    </Button>
-                  ),
-                }}
-              />
-            </Box>
-          </Box>
-        </Box>
-
-        {/* Set Criteria */}
+        {/* Add Location/Venue Section */}
         <Box sx={{ mt: 2 }}>
-          <Typography variant="body1" sx={{  mb: 1 }}>
-            Set Criteria
+          <Typography variant="body1" sx={{ mb: 1 }}>
+            Add Location/Venue
           </Typography>
-          <Box sx={{ display: "flex", gap: 4 }}>
-            {/* No. of slots per student */}
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body1" sx={{  mb: 1 }}>
-                No. of slots per student
-              </Typography>
-              <TextField
-                type="number"
-                value={slotsPerStudent}
-                onChange={(e) => setSlotsPerStudent(e.target.value)}
-                sx={{
-                  width: "100%",
-                  backgroundColor: "#f8f9fa",
-                  borderRadius: 1,
-                  "& .MuiInputBase-root": {
-                    height: "40px", // Reduced height
-                  },
-                }}
-              />
-            </Box>
-
-            {/* No. of slots per faculty */}
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body1" sx={{  mb: 1 }}>
-                No. of slots per faculty
-              </Typography>
-              <TextField
-                type="number"
-                value={slotsPerFaculty}
-                onChange={(e) => setSlotsPerFaculty(e.target.value)}
-                sx={{
-                  width: "100%",
-                  backgroundColor: "#f8f9fa",
-                  borderRadius: 1,
-                  "& .MuiInputBase-root": {
-                    height: "40px", // Reduced height
-                  },
-                }}
-              />
-            </Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <TextField
+              fullWidth
+              placeholder="Venue"
+              value={selectedVenues.map((venue) => venue.venue_name).join(", ")} // Display selected venue names
+              sx={{
+                backgroundColor: "#f8f9fa",
+                borderRadius: 1,
+                "& .MuiInputBase-root": {
+                  height: "40px",
+                },
+              }}
+              InputProps={{
+                endAdornment: (
+                  <Button
+                    variant="contained"
+                    sx={{
+                      backgroundColor: "white",
+                      color: "darkgreen",
+                      border: "1px solid darkgreen",
+                      height: "30px",
+                      minWidth: "20%",
+                      "&:hover": {
+                        backgroundColor: "darkgreen",
+                        color: "white",
+                      },
+                    }}
+                    onClick={() => setVenuePopupOpen(true)} // Open the popup
+                  >
+                    Add Venue
+                  </Button>
+                ),
+              }}
+            />
           </Box>
         </Box>
-        
-        {/* Add "Create Draft" and "Preview" buttons */}
+
+        {/* Add Venue Popup */}
+        <Add_venue_popup
+          open={venuePopupOpen}
+          onClose={handleVenueSelection} // Pass selected venues back to SlotTemplate
+          venues={[]}
+        />
+
+        {/* Assign Faculty */}
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="body1" sx={{ mb: 1 }}>
+            Assign Faculty
+          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <TextField
+              fullWidth
+              placeholder="Faculty"
+              value={selectedFaculties.join(", ")}
+              sx={{
+                backgroundColor: "#f8f9fa",
+                borderRadius: 1,
+                "& .MuiInputBase-root": {
+                  height: "36px",
+                  padding: "6px 12px",
+                },
+                "& .MuiInputBase-input": {
+                  fontSize: "14px",
+                },
+              }}
+              InputProps={{
+                endAdornment: (
+                  <Button
+                    variant="contained"
+                    sx={{
+                      backgroundColor: "white",
+                      color: "darkgreen",
+                      border: "1px solid darkgreen",
+                      height: "30px",
+                      minWidth: "20%",
+                      "&:hover": {
+                        backgroundColor: "darkgreen",
+                        color: "white",
+                      },
+                      padding: "6px 12px",
+                      fontSize: "14px",
+                    }}
+                    onClick={() => setFacultyPopupOpen(true)}
+                  >
+                    Add Faculty
+                  </Button>
+                ),
+              }}
+            />
+          </Box>
+        </Box>
+
+        {/* Add Faculty Popup */}
+        <Add_Faculty_popup
+          open={facultyPopupOpen}
+          onClose={handleFacultySelection}
+          facultyList={availableFaculties}
+        />
+
+        {/* Add "Cancel", "Create Draft", and "Preview" buttons */}
         <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 4 }}>
+          {/* Cancel Button */}
+          <Button
+            variant="outlined"
+            onClick={onCancel} // Call onCancel to go back to SchedulesTable
+            sx={{
+              color: "red",
+              borderColor: "red",
+              "&:hover": {
+                borderColor: "red",
+                backgroundColor: "rgba(255, 0, 0, 0.04)", // Light red background on hover
+              },
+              borderRadius: 2,
+              textTransform: "none", // Prevent uppercase transformation
+              padding: "8px 24px", // Adjust padding for better appearance
+            }}
+          >
+            Cancel
+          </Button>
+
           {/* Create Draft Button */}
           <Button
             variant="outlined"
@@ -466,12 +457,20 @@ const Template1 = () => {
             Preview
           </Button>
         </Box>
+
         {/* Preview Popup */}
-        <Preview_popup open={openPreview} onClose={() => setOpenPreview(false)} />
+        <SlotPreview
+          open={openPreview}
+          onClose={() => setOpenPreview(false)}
+          startDateTime={startDateTime}
+          slotDuration={slotDuration}
+          durationUnit={durationUnit}
+          numberOfSlots={numberOfSlots}
+          selectedVenues={selectedVenues}
+        />
       </Box>
     </Box>
   );
 };
 
-export default Template1;
-
+export default SlotTemplate;

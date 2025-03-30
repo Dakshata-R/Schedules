@@ -1,21 +1,22 @@
-// config/roles_db.js
 const mysql = require('mysql2');
 
-// Create a connection to the MySQL database
-const db = mysql.createConnection({
+const roles_db = mysql.createPool({
   host: 'localhost',
   user: 'root',
   password: 'sandhiya',
   database: 'roles_management',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
 });
 
-// Connect to the database
-db.connect((err) => {
+roles_db.getConnection((err, connection) => {
   if (err) {
-    console.error('Error connecting to the database:', err);
+    console.error('Error connecting to the roles_management database:', err);
     return;
   }
   console.log('Connected to the roles_management database');
+  connection.release();
 });
 
-module.exports = db;
+module.exports = roles_db;

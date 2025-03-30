@@ -1,11 +1,22 @@
-.sidebar-icon {
-    color: #6b7280; /* Gray */
-  }
-  
-  .active-icon {
-    background-color: #006d5b; /* Dark Green */
-    padding: 10px;
-    border-radius: 10px;
-    color: white;
-  }
-  
+/* home.css */
+.home-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh; /* Full viewport height */
+  text-align: center;
+  background-color: #f5f5f5; /* Light background color */
+  padding: 20px;
+}
+
+.home-container h1 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  color: #333; /* Dark text color */
+}
+
+.home-container p {
+  font-size: 1.2rem;
+  color: #666; /* Gray text color */
+}

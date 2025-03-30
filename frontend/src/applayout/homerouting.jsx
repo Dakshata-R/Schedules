@@ -1,19 +1,24 @@
 import { Routes, Route } from "react-router-dom";
-import Dashboard from "../pages/home";
-import Users from "../pages/secondbutton/create"; // Correct Users component
-import UserInput from "../pages/secondbutton/userinput"; // Nested routing for steps
-import Files from "../pages/files";
-import Logout from "../pages/logout";
+import ScheduleView from "../Student/StudentHome"; // Import ScheduleView
+import RequestsList from "../Student/StudentFiles"; // Import RequestsList
+import Home from "../faculty/facultyhome"; // Import Home
+import Users from "../pages/secondbutton/create"; // Import UserInput
+import Files from "../faculty/Files";
 
 const HomeRouting = () => {
   return (
     <Routes>
-      <Route index element={<Dashboard />} />
-      <Route path="users" element={<Users />}>
-        <Route index element={<UserInput />} />
-      </Route>
+      {/* Default route for the dashboard */}
+      <Route index element={<Home />} /> {/* Default to Home for the root path */}
+
+      {/* Routes for Students */}
+      <Route path="studenthome" element={<ScheduleView />} />
+      <Route path="studentfiles" element={<RequestsList />} />
+
+      {/* Routes for Faculty */}
+      <Route path="home" element={<Home />} />
+      <Route path="create" element={< Users/>} />
       <Route path="files" element={<Files />} />
-      <Route path="logout" element={<Logout />} />
     </Routes>
   );
 };

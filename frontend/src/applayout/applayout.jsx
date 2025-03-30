@@ -1,5 +1,6 @@
+import React from "react";
 import Sidebar from "../components/sidebar";
-import Homerouting from "../applayout/homerouting";
+import HomeRouting from "../applayout/homerouting";
 
 const AppLayout = () => {
   return (
@@ -9,7 +10,7 @@ const AppLayout = () => {
 
       {/* Main Content */}
       <div className="flex-1 mt-16 p-4">
-        <Homerouting /> {/* This will render the nested routes */}
+        <HomeRouting /> {/* This will render the nested routes */}
       </div>
     </div>
   );

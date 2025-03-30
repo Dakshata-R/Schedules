@@ -35,6 +35,7 @@ const AuthPage = () => {
         if (!isRegister) {
           localStorage.setItem("token", data.token); // Store the JWT token
           localStorage.setItem("role", data.role); // Store the user's role
+          localStorage.setItem("email", email); // Store the logged-in email
           navigate("/dashboard"); // Navigate to the dashboard after successful login
         }
       } else {

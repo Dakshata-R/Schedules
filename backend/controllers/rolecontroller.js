@@ -2,9 +2,13 @@ const roleModel = require('../models/rolemodals');
 
 exports.saveRole = (req, res) => {
   const { roleName, priority, members, permissions } = req.body;
+  console.log("Received data:", { roleName, priority, members, permissions }); // Log the data
 
   roleModel.saveRole(roleName, priority, members, permissions, (err, result) => {
-    if (err) return res.status(500).send(err);
+    if (err) {
+      console.error("Error saving role:", err); // Log the error
+      return res.status(500).send(err);
+    }
     res.status(200).send('Role saved successfully');
   });
 };

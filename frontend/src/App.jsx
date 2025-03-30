@@ -1,46 +1,25 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import AuthPage from "./pages/loginpage";
-import AppLayout from "./applayout/applayout";
-import HomeRouting from "./applayout/homerouting";
-import ProtectedRoute from "./protectedroute"; // Import the ProtectedRoute component
+import AppLayout from "./applayout/applayout"; // Import AppLayout component
 
-function App() {
+const App = () => {
   return (
     <Router>
       <Routes>
-        {/* Login Page */}
+        {/* Public Route */}
         <Route path="/" element={<AuthPage />} />
 
-        {/* Dashboard with AppLayout (includes Sidebar) */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute allowedRoles={["student", "faculty"]}>
-              <AppLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<HomeRouting />} /> {/* /dashboard */}
-
-          {/* Protected Route for Faculty */}
-          <Route
-            path="users"
-            element={
-              <ProtectedRoute allowedRoles={["faculty"]}>
-                <HomeRouting />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route path="files" element={<HomeRouting />} /> {/* /dashboard/files */}
+        {/* Protected Routes */}
+        <Route path="/dashboard/*" element={<AppLayout />}>
+          {/* Nested routes are handled by HomeRouting inside AppLayout */}
         </Route>
 
-        {/* Fallback route for invalid paths */}
-        <Route path="*" element={<Navigate to="/" />} />
+        {/* Fallback Route */}
+        <Route path="*" element={<div>Page not found</div>} />
       </Routes>
     </Router>
   );
-}
+};
 
 export default App;

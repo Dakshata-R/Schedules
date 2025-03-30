@@ -196,13 +196,13 @@ const RolesPop = ({ onClose, editingRole }) => {
       members,
       permissions,
     };
-
+  
     try {
       const url = editingRole
         ? `http://localhost:5000/api/updateRole/${editingRole.id}`
         : "http://localhost:5000/api/saveRole";
       const method = editingRole ? "PUT" : "POST";
-
+  
       const response = await fetch(url, {
         method,
         headers: {
@@ -210,7 +210,7 @@ const RolesPop = ({ onClose, editingRole }) => {
         },
         body: JSON.stringify(roleData),
       });
-
+  
       if (response.ok) {
         alert(editingRole ? "Role updated successfully!" : "Role saved successfully!");
         onClose();
@@ -222,7 +222,6 @@ const RolesPop = ({ onClose, editingRole }) => {
       alert("An error occurred while saving the role.");
     }
   };
-
   return (
     <Box
       sx={{
@@ -375,7 +374,7 @@ const RolesPop = ({ onClose, editingRole }) => {
             <Avatar
               key={index}
               alt={member}
-              src={`https://via.placeholder.com/40?text=${member[0]}`}
+              src={`https://placehold.co/40?text=${member[0]}`}
               sx={{ width: 40, height: 40 }}
             />
           ))}

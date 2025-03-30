@@ -14,17 +14,24 @@ const Sidebar = () => {
   // Retrieve the user's role from localStorage
   const role = localStorage.getItem("role");
 
-  // Define all menu items
-  const menuItems = [
-    { name: "dashboard", icon: <DashboardIcon fontSize="small" />, path: "/dashboard" },
-    { name: "users", icon: <GroupIcon fontSize="small" />, path: "/dashboard/users" },
-    { name: "files", icon: <FolderIcon fontSize="small" />, path: "/dashboard/files" },
+  // Define menu items for students
+  const studentMenuItems = [
+    { name: "Student Home", icon: <DashboardIcon fontSize="small" />, path: "/dashboard/studenthome" },
+    { name: "Student Files", icon: <FolderIcon fontSize="small" />, path: "/dashboard/studentfiles" },
+  ];
+
+  // Define menu items for faculty
+  const facultyMenuItems = [
+    { name: "Home", icon: <DashboardIcon fontSize="small" />, path: "/dashboard/home" },
+    { name: "Create", icon: <GroupIcon fontSize="small" />, path: "/dashboard/create" },
+    { name: "Files", icon: <FolderIcon fontSize="small" />, path: "/dashboard/files" },
   ];
 
   // Filter menu items based on the user's role
-  const filteredMenuItems = role === "faculty"
-    ? menuItems // Faculty can see all options
-    : menuItems.filter((item) => item.name !== "users"); // Students cannot see "Users"
+  const menuItems = role === "student" ? studentMenuItems : facultyMenuItems;
+
+  // Get the current menu item based on the path
+  const currentMenuItem = menuItems.find((item) => location.pathname === item.path);
 
   return (
     <Box sx={{ display: "flex" }}>
@@ -50,7 +57,7 @@ const Sidebar = () => {
               marginLeft: "80px",
             }}
           >
-            Dashboard
+            {currentMenuItem ? currentMenuItem.name : "Dashboard"} {/* Default to "Dashboard" if no match */}
           </Typography>
         </Toolbar>
       </AppBar>
@@ -78,7 +85,7 @@ const Sidebar = () => {
         />
 
         {/* Sidebar Icons */}
-        {filteredMenuItems.map((item) => (
+        {menuItems.map((item) => (
           <IconButton
             key={item.name}
             onClick={() => navigate(item.path)}
