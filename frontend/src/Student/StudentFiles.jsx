@@ -20,10 +20,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
-import FilterListIcon from "@mui/icons-material/FilterList";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import DeleteIcon from "@mui/icons-material/Delete";
-import SelectTemplate from "../components/schedules_template/SelectTemplate";
 import axios from "axios";
 
 const StudentFiles = () => {
@@ -31,16 +28,12 @@ const StudentFiles = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewAllActive, setViewAllActive] = useState(false);
   const [page, setPage] = useState(1);
   const [selectedStudents, setSelectedStudents] = useState([]);
-  const [selectTemplateOpen, setSelectTemplateOpen] = useState(false);
   const rowsPerPage = 7;
 
-  // Retrieve the logged-in email from local storage
   const loggedInEmail = localStorage.getItem("email");
 
-  // Fetch requests from the backend based on the logged-in email
   useEffect(() => {
     const fetchRequests = async () => {
       if (!loggedInEmail) {
@@ -54,10 +47,9 @@ const StudentFiles = () => {
         const response = await axios.get(
           `http://localhost:5000/api/requests?email=${loggedInEmail}`
         );
-        // Parse the skills field from a JSON string to an array
         const parsedRequests = response.data.map((request) => ({
           ...request,
-          skills: JSON.parse(request.skills), // Parse the skills field
+          skills: JSON.parse(request.skills),
         }));
         setRequests(parsedRequests);
       } catch (error) {
@@ -70,112 +62,71 @@ const StudentFiles = () => {
     fetchRequests();
   }, [loggedInEmail]);
 
-  // Handle filter
   const handleFilter = (event) => {
     setFilter(event.target.value);
     setPage(1);
   };
 
-  // Handle search
   const handleSearch = (event) => {
     setSearchQuery(event.target.value);
     setPage(1);
   };
 
-  // Handle delete request
   const handleDelete = async (id) => {
     try {
       await axios.delete(`http://localhost:5000/api/requests/${id}`);
-      setRequests((prevRequests) => prevRequests.filter((request) => request.id !== id));
-      setSelectedStudents((prev) => prev.filter((studentId) => studentId !== id));
+      setRequests(prevRequests => prevRequests.filter(request => request.id !== id));
+      setSelectedStudents(prev => prev.filter(studentId => studentId !== id));
     } catch (error) {
       console.error("Error deleting request:", error);
     }
   };
 
-  // Handle student selection
   const handleSelectStudent = (id) => {
-    setSelectedStudents((prev) =>
+    setSelectedStudents(prev =>
       prev.includes(id)
-        ? prev.filter((studentId) => studentId !== id)
+        ? prev.filter(studentId => studentId !== id)
         : [...prev, id]
     );
   };
 
-  // Handle select all students on current page
   const handleSelectAll = () => {
     if (selectedStudents.length === paginatedRequests.length) {
       setSelectedStudents([]);
     } else {
-      setSelectedStudents(paginatedRequests.map((request) => request.id));
+      setSelectedStudents(paginatedRequests.map(request => request.id));
     }
   };
 
-  // Filtered and searched requests
   const filteredRequests = requests.filter((request) => {
-    const matchesFilter =
-      filter === "all" || request.status.toLowerCase() === filter;
-    const matchesSearch = request.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
+    const matchesFilter = filter === "all" || request.status.toLowerCase() === filter;
+    const matchesSearch = request.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
-  // Handle View All click
-  const handleViewAll = () => {
-    setViewAllActive(!viewAllActive);
-    setFilter("all");
-    setPage(1);
-  };
-
-  // Pagination logic
   const totalPages = Math.ceil(filteredRequests.length / rowsPerPage);
   const paginatedRequests = filteredRequests.slice(
     (page - 1) * rowsPerPage,
     page * rowsPerPage
   );
 
-  // Handle page change
   const handlePageChange = (newPage) => {
     setPage(newPage);
   };
 
-  // Handle template selection
-  const handleTemplateSelect = (template) => {
-    console.log(`Selected template: ${template} for students:`, selectedStudents);
-    // Here you would typically make an API call to create the schedule
-    // Example:
-    // axios.post('/api/schedules', {
-    //   template,
-    //   studentIds: selectedStudents,
-    //   createdBy: loggedInEmail
-    // });
-    setSelectTemplateOpen(false);
-    setSelectedStudents([]); // Clear selection after scheduling
-  };
-
   if (loading) {
     return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
-        }}
-      >
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
         <CircularProgress />
       </Box>
     );
   }
 
   return (
-    <Box sx={{ backgroundColor: "#f5f6fa", minHeight: "100vh", padding: "16px" }}>
-      {/* Top Container */}
+    <Box sx={{ backgroundColor: "#f5f6fa", minHeight: "100vh", padding: "16px", width: "88vw" }}>
       <Box
         sx={{
           padding: "6px",
-          marginLeft: "80px",
           marginTop: "45px",
           backgroundColor: "#ffffff",
           borderRadius: "8px",
@@ -183,81 +134,29 @@ const StudentFiles = () => {
           mb: 2,
         }}
       >
-        {/* Header Section */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "16px",
-          }}
-        >
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-              Student Files
-            </Typography>
-            <Chip
-              label={`${filteredRequests.length} Students`}
-              sx={{ backgroundColor: "#e3f2fd", color: "#2196f3" }}
-            />
+            <Typography variant="h5" sx={{ fontWeight: "bold" }}>Student Files</Typography>
+            <Chip label={`${filteredRequests.length} Students`} sx={{ backgroundColor: "#e3f2fd", color: "#2196f3" }} />
           </Box>
-
-          {/* Create Schedule Button */}
-          <Button
-            variant="contained"
-            color="primary"
-            disabled={selectedStudents.length === 0}
-            onClick={() => setSelectTemplateOpen(true)}
-            sx={{
-              backgroundColor: "#4caf50",
-              "&:disabled": {
-                backgroundColor: "#a5d6a7",
-              },
-            }}
-          >
-            Create Schedule ({selectedStudents.length})
-          </Button>
         </Box>
 
-        {/* Subheader Section */}
         <Box sx={{ padding: "0 16px 16px 16px" }}>
-          <Typography variant="body1">
-            Manage student files and create schedules.
-          </Typography>
+          <Typography variant="body1">Manage student files and schedules.</Typography>
         </Box>
 
-        {/* Filter Section */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "0 16px 16px 16px",
-          }}
-        >
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 16px 16px 16px" }}>
           <Box sx={{ display: "flex", gap: 2 }}>
-            <Button
-              variant="outlined"
-              onClick={handleViewAll}
-              sx={{
-                color: viewAllActive ? "#4caf50" : "inherit",
-                borderColor: viewAllActive ? "#4caf50" : "inherit",
-              }}
-            >
-              View all
-            </Button>
+            <Button variant="outlined">View all</Button>
           </Box>
 
-          {/* Search and Filter */}
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
             <TextField
               size="small"
               placeholder="Search"
               value={searchQuery}
               onChange={handleSearch}
-              InputProps={{
-                startAdornment: <SearchIcon sx={{ color: "gray", mr: 1 }} />,
-              }}
+              InputProps={{ startAdornment: <SearchIcon sx={{ color: "gray", mr: 1 }} /> }}
               sx={{ backgroundColor: "#ffffff", borderRadius: "30px", width: "300px" }}
             />
             <FormControl variant="outlined" size="small" sx={{ minWidth: "120px" }}>
@@ -265,7 +164,6 @@ const StudentFiles = () => {
                 value={filter}
                 onChange={handleFilter}
                 displayEmpty
-                startAdornment={<FilterListIcon sx={{ color: "gray", mr: 1 }} />}
               >
                 <MenuItem value="all">All</MenuItem>
                 <MenuItem value="pending">Pending</MenuItem>
@@ -275,21 +173,14 @@ const StudentFiles = () => {
           </Box>
         </Box>
 
-        {/* Table Section */}
         <TableContainer component={Paper} sx={{ marginBottom: "16px" }}>
           <Table>
             <TableHead>
               <TableRow>
                 <TableCell padding="checkbox">
                   <Checkbox
-                    indeterminate={
-                      selectedStudents.length > 0 &&
-                      selectedStudents.length < paginatedRequests.length
-                    }
-                    checked={
-                      paginatedRequests.length > 0 &&
-                      selectedStudents.length === paginatedRequests.length
-                    }
+                    indeterminate={selectedStudents.length > 0 && selectedStudents.length < paginatedRequests.length}
+                    checked={paginatedRequests.length > 0 && selectedStudents.length === paginatedRequests.length}
                     onChange={handleSelectAll}
                   />
                 </TableCell>
@@ -311,53 +202,36 @@ const StudentFiles = () => {
                       />
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-                        {request.name}
-                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: "bold" }}>{request.name}</Typography>
                       <Typography variant="body2">{request.rollNumber}</Typography>
                     </TableCell>
                     <TableCell>{request.department}</TableCell>
                     <TableCell>
-                      {Array.isArray(request.skills)
-                        ? request.skills.join(", ")
-                        : "No skills"}
+                      {Array.isArray(request.skills) ? request.skills.join(", ") : "No skills"}
                     </TableCell>
                     <TableCell>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          backgroundColor: "#ffebee",
-                          padding: "4px 8px",
-                          borderRadius: "12px",
-                          width: "fit-content",
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            width: "8px",
-                            height: "8px",
-                            borderRadius: "50%",
-                            backgroundColor: "#d32f2f",
-                          }}
-                        />
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            color: "#d32f2f",
-                          }}
-                        >
+                      <Box sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        backgroundColor: "#ffebee",
+                        padding: "4px 8px",
+                        borderRadius: "12px",
+                        width: "fit-content",
+                      }}>
+                        <Box sx={{
+                          width: "8px",
+                          height: "8px",
+                          borderRadius: "50%",
+                          backgroundColor: "#d32f2f",
+                        }} />
+                        <Typography variant="body1" sx={{ color: "#d32f2f" }}>
                           {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                         </Typography>
-                        <ArrowDropDownIcon sx={{ color: "gray", fontSize: "16px" }} />
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <IconButton
-                        onClick={() => handleDelete(request.id)}
-                        sx={{ color: "#d32f2f" }}
-                      >
+                      <IconButton onClick={() => handleDelete(request.id)} sx={{ color: "#d32f2f" }}>
                         <DeleteIcon />
                       </IconButton>
                     </TableCell>
@@ -376,16 +250,13 @@ const StudentFiles = () => {
           </Table>
         </TableContainer>
 
-        {/* Pagination Section */}
         {filteredRequests.length > 0 && (
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "16px",
-            }}
-          >
+          <Box sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "16px",
+          }}>
             <Typography variant="body1">
               Page {page} of {totalPages}
             </Typography>
@@ -408,13 +279,6 @@ const StudentFiles = () => {
           </Box>
         )}
       </Box>
-
-      {/* Select Template Dialog */}
-      <SelectTemplate
-        open={selectTemplateOpen}
-        handleClose={() => setSelectTemplateOpen(false)}
-        onTemplateSelect={handleTemplateSelect}
-      />
     </Box>
   );
 };

@@ -1,37 +1,68 @@
 import React from "react";
-import { AppBar, Toolbar, Typography, Box, Drawer, IconButton } from "@mui/material";
+import { 
+  AppBar, 
+  Toolbar, 
+  Typography, 
+  Box, 
+  Drawer, 
+  IconButton, 
+  List, 
+  ListItem, 
+  ListItemButton, 
+  ListItemIcon, 
+  ListItemText 
+} from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import GroupIcon from "@mui/icons-material/Group";
-import FolderIcon from "@mui/icons-material/Folder";
-import LogoutIcon from "@mui/icons-material/Logout";
-import logo from "../assets/logo.png"; // Ensure this path is correct
+import { 
+  Dashboard as DashboardIcon,
+  People as GroupIcon,
+  Folder as FolderIcon,
+  Logout as LogoutIcon,
+  Menu as MenuIcon,
+  ChevronLeft as ChevronLeftIcon,
+  Create as CreateIcon
+} from "@mui/icons-material";
+import logo from "../assets/logo.png";
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [open, setOpen] = React.useState(false);
+  const role = localStorage.getItem("role") || "student";
 
-  // Retrieve the user's role from localStorage
-  const role = localStorage.getItem("role");
-
-  // Define menu items for students
-  const studentMenuItems = [
-    { name: "Student Home", icon: <DashboardIcon fontSize="small" />, path: "/dashboard/studenthome" },
-    { name: "Student Files", icon: <FolderIcon fontSize="small" />, path: "/dashboard/studentfiles" },
+  // Define menu items based on role
+  const menuItems = [
+    { 
+      name: "Dashboard", 
+      icon: <DashboardIcon />, 
+      path: `/${role}/dashboard`,
+      roles: ["admin", "faculty", "student"]
+    },
+    { 
+      name: "Create", 
+      icon: <CreateIcon />, 
+      path: `/${role}/dashboard/create`,
+      roles: ["faculty"] 
+    },
+    { 
+      name: "Files", 
+      icon: <FolderIcon />, 
+      path: `/${role}/dashboard/files`,
+      roles: ["faculty", "student"] 
+    },
   ];
 
-  // Define menu items for faculty
-  const facultyMenuItems = [
-    { name: "Home", icon: <DashboardIcon fontSize="small" />, path: "/dashboard/home" },
-    { name: "Create", icon: <GroupIcon fontSize="small" />, path: "/dashboard/create" },
-    { name: "Files", icon: <FolderIcon fontSize="small" />, path: "/dashboard/files" },
-  ];
+  const filteredMenuItems = menuItems.filter(item => 
+    item.roles.includes(role)
+  );
 
-  // Filter menu items based on the user's role
-  const menuItems = role === "student" ? studentMenuItems : facultyMenuItems;
+  const toggleDrawer = () => {
+    setOpen(!open);
+  };
 
-  // Get the current menu item based on the path
-  const currentMenuItem = menuItems.find((item) => location.pathname === item.path);
+  const currentPage = filteredMenuItems.find(item => 
+    location.pathname.startsWith(item.path)
+  )?.name || "Dashboard";
 
   return (
     <Box sx={{ display: "flex" }}>
@@ -42,22 +73,38 @@ const Sidebar = () => {
           backgroundColor: "#fff",
           boxShadow: "none",
           borderBottom: "1px solid #ddd",
-          width: `calc(100% - 80px)`,
-          marginLeft: "80px",
+          width: open ? `calc(100% - 240px)` : `calc(100% - 80px)`,
+          marginLeft: open ? "240px" : "80px",
+          transition: "all 0.3s ease",
+          zIndex: (theme) => theme.zIndex.drawer + 1,
         }}
       >
         <Toolbar>
+          <IconButton
+            color="inherit"
+            aria-label="open drawer"
+            onClick={toggleDrawer}
+            edge="start"
+            sx={{ 
+              mr: 2,
+              color: "#333",
+              display: { xs: 'none', sm: 'block' } 
+            }}
+          >
+            {open ? <ChevronLeftIcon /> : <MenuIcon />}
+          </IconButton>
           <Typography
             variant="h6"
+            noWrap
+            component="div"
             sx={{
               fontFamily: "Poppins, sans-serif",
               fontWeight: "bold",
               fontSize: "20px",
               color: "#333",
-              marginLeft: "80px",
             }}
           >
-            {currentMenuItem ? currentMenuItem.name : "Dashboard"} {/* Default to "Dashboard" if no match */}
+            {currentPage}
           </Typography>
         </Toolbar>
       </AppBar>
@@ -65,67 +112,152 @@ const Sidebar = () => {
       {/* Sidebar */}
       <Drawer
         variant="permanent"
+        open={open}
         sx={{
-          "& .MuiDrawer-paper": {
-            width: 80,
-            display: "flex",
-            alignItems: "center",
+          width: open ? 240 : 80,
+          flexShrink: 0,
+          whiteSpace: 'nowrap',
+          boxSizing: 'border-box',
+          transition: "width 0.3s ease",
+          '& .MuiDrawer-paper': {
+            width: open ? 240 : 80,
+            overflowX: 'hidden',
+            transition: "width 0.3s ease",
             bgcolor: "#fff",
-            paddingTop: 2,
-            height: "100vh",
+            borderRight: "1px solid #ddd",
           },
         }}
       >
-        {/* Logo */}
+        {/* Logo Section */}
         <Box
-          component="img"
-          src={logo}
-          alt="Logo"
-          sx={{ width: 50, height: 50, marginBottom: 6 }}
-        />
-
-        {/* Sidebar Icons */}
-        {menuItems.map((item) => (
-          <IconButton
-            key={item.name}
-            onClick={() => navigate(item.path)}
-            sx={{
-              width: 40,
-              height: 40,
-              marginBottom: 2,
-              borderRadius: 3,
-              bgcolor: location.pathname === item.path ? "green" : "transparent",
-              color: location.pathname === item.path ? "white" : "black",
-              "&:hover": { bgcolor: "rgba(0, 128, 0, 0.2)" },
-            }}
-          >
-            {item.icon}
-          </IconButton>
-        ))}
-
-        {/* Push Logout to Bottom */}
-        <Box sx={{ flexGrow: 1 }} />
-
-        {/* Logout Icon */}
-        <IconButton
-          onClick={() => {
-            localStorage.removeItem("token"); // Clear token
-            localStorage.removeItem("role"); // Clear role
-            navigate("/"); // Navigate to login page
-          }}
           sx={{
-            width: 40,
-            height: 40,
-            borderRadius: 3,
-            bgcolor: "rgba(255, 0, 0, 0.2)",
-            color: "red",
-            marginBottom: 2,
-            "&:hover": { bgcolor: "rgba(255, 0, 0, 0.4)" },
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: open ? 'flex-start' : 'center',
+            padding: open ? '16px 24px' : '16px 0',
+            height: 64,
           }}
         >
-          <LogoutIcon fontSize="small" />
-        </IconButton>
+          <Box
+            component="img"
+            src={logo}
+            alt="Logo"
+            sx={{ width: 40, height: 40 }}
+          />
+          {open && (
+            <Typography
+              variant="h6"
+              sx={{
+                ml: 2,
+                fontFamily: "Poppins, sans-serif",
+                fontWeight: "bold",
+                color: "#333",
+              }}
+            >
+              University Portal
+            </Typography>
+          )}
+        </Box>
+
+        {/* Menu Items */}
+        <List sx={{ pt: 0 }}>
+          {filteredMenuItems.map((item) => (
+            <ListItem key={item.name} disablePadding sx={{ display: 'block' }}>
+              <ListItemButton
+                onClick={() => navigate(item.path)}
+                sx={{
+                  minHeight: 48,
+                  justifyContent: open ? 'initial' : 'center',
+                  px: 2.5,
+                  mx: 1,
+                  borderRadius: 2,
+                  bgcolor: location.pathname.startsWith(item.path) 
+                    ? 'rgba(0, 128, 0, 0.1)' 
+                    : 'transparent',
+                  '&:hover': {
+                    bgcolor: 'rgba(0, 128, 0, 0.2)',
+                  },
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    minWidth: 0,
+                    mr: open ? 3 : 'auto',
+                    justifyContent: 'center',
+                    color: location.pathname.startsWith(item.path) 
+                      ? 'green' 
+                      : '#555',
+                  }}
+                >
+                  {item.icon}
+                </ListItemIcon>
+                {open && (
+                  <ListItemText 
+                    primary={item.name} 
+                    primaryTypographyProps={{
+                      fontFamily: "Poppins, sans-serif",
+                      fontWeight: location.pathname.startsWith(item.path) 
+                        ? 'bold' 
+                        : 'normal',
+                      color: location.pathname.startsWith(item.path) 
+                        ? 'green' 
+                        : '#333',
+                    }}
+                  />
+                )}
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </List>
+
+        {/* Spacer to push logout to bottom */}
+        <Box sx={{ flexGrow: 1 }} />
+
+        {/* Logout Button */}
+        <List>
+          <ListItem disablePadding sx={{ display: 'block' }}>
+            <ListItemButton
+              onClick={() => {
+                localStorage.removeItem("token");
+                localStorage.removeItem("role");
+                navigate("/login");
+              }}
+              sx={{
+                minHeight: 48,
+                justifyContent: open ? 'initial' : 'center',
+                px: 2.5,
+                mx: 1,
+                borderRadius: 2,
+                bgcolor: 'rgba(255, 0, 0, 0.1)',
+                '&:hover': {
+                  bgcolor: 'rgba(255, 0, 0, 0.2)',
+                },
+              }}
+            >
+              <ListItemIcon
+                sx={{
+                  minWidth: 0,
+                  mr: open ? 3 : 'auto',
+                  justifyContent: 'center',
+                  color: 'red',
+                }}
+              >
+                <LogoutIcon />
+              </ListItemIcon>
+              {open && (
+                <ListItemText 
+                  primary="Logout" 
+                  primaryTypographyProps={{
+                    fontFamily: "Poppins, sans-serif",
+                    color: 'red',
+                  }}
+                />
+              )}
+            </ListItemButton>
+          </ListItem>
+        </List>
       </Drawer>
+
     </Box>
   );
 };

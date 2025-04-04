@@ -28,7 +28,7 @@ const SchedulesManager = () => {
     <Box
       
         sx={{
-          width: "70%",
+          width: "70vw",
           backgroundColor: "#fff",
           borderRadius: "12px",
           padding: "20px",

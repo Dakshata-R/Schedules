@@ -28,19 +28,19 @@ const Users = () => {
   return (
     <Box
       sx={{
-        backgroundColor: "#f5f6fa",
+        backgroundColor: "#f5f6fa",//#f5f6fa
         minHeight: "100vh",
-        width: "100vw",
+        width: "70vw",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        padding: "20px",
+        marginTop: "30px",
       }}
     >
       <Paper
         sx={{
-          width: "70%",
-          backgroundColor: "#fff",
+          width: "100%",
+          backgroundColor: "#fff",//#fff
           borderRadius: "12px",
           padding: "17px",
           boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
@@ -57,6 +57,7 @@ const Users = () => {
             justifyContent: "center",
             gap: 2,
             width: "100%",
+
           }}
         >
           {tabs.map((tab) => (

@@ -33,7 +33,7 @@ const AddUser = ({ open, onClose, onAddUser }) => {
   useEffect(() => {
     const fetchRoles = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/getRoles");
+        const response = await fetch("http://localhost:8000/api/getRoles");
         if (response.ok) {
           const data = await response.json();
           // Extract role name and count of assigned roles

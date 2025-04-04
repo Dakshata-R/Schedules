@@ -1,17 +1,21 @@
-import React from "react";
-import Sidebar from "../components/sidebar";
-import HomeRouting from "../applayout/homerouting";
+import { Outlet } from 'react-router-dom';
+import Sidebar from '../components/sidebar';
 
 const AppLayout = () => {
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
+    <div style={{ display: 'flex' }}>
       <Sidebar />
-
-      {/* Main Content */}
-      <div className="flex-1 mt-16 p-4">
-        <HomeRouting /> {/* This will render the nested routes */}
-      </div>
+      <main style={{ 
+        flexGrow: 1,
+        backgroundColor:"#f5f6fa",
+        padding: '24px',
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        marginTop: '64px'
+      }}>
+        <Outlet />
+      </main>
     </div>
   );
 };

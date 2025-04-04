@@ -87,7 +87,7 @@ const Personal = ({ onUpdate }) => {
           formDataToSend.append("coverImage", formData.coverImage);
         }
 
-        const response = await fetch("http://localhost:5000/api/personal", {
+        const response = await fetch("http://localhost:8000/api/personal", {
           method: "POST",
           body: formDataToSend,
         });

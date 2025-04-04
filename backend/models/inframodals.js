@@ -1,37 +1,31 @@
-const mysql = require('mysql2');
-const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: 'sandhiya',
-  database: 'infra_management',
-});
-
-// Existing functions for saving data
+const db = require('../config/db');
 exports.saveBasic = (uniqueId, venueName, location, priority, primaryPurpose, responsiblePersons, imagePath, callback) => {
   const query = `
     INSERT INTO basic (uniqueId, venueName, location, priority, primaryPurpose, responsiblePersons, imagePath)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
-  db.query(query, [uniqueId, venueName, location, priority, primaryPurpose, JSON.stringify(responsiblePersons), imagePath], callback);
+  db.query(query, [uniqueId, venueName, location, priority, primaryPurpose, JSON.stringify(responsiblePersons), imagePath], (err, result) => {
+    if (err) return callback(err);
+    callback(null, result.insertId); // Return the auto-incremented ID
+  });
 };
 
-exports.saveVenueType = (capacity, floor, maintenanceFrequency, usageFrequency, accessibilityOptions, ventilationType, callback) => {
+exports.saveVenueType = (basicId, capacity, floor, maintenanceFrequency, usageFrequency, accessibilityOptions, ventilationType, callback) => {
   const query = `
-    INSERT INTO venue_type (capacity, floor, maintenanceFrequency, usageFrequency, accessibilityOptions, ventilationType)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO venue_type (basic_id, capacity, floor, maintenanceFrequency, usageFrequency, accessibilityOptions, ventilationType)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
-  db.query(query, [capacity, floor, JSON.stringify(maintenanceFrequency), JSON.stringify(usageFrequency), JSON.stringify(accessibilityOptions), ventilationType], callback);
+  db.query(query, [basicId, capacity, floor, maintenanceFrequency, usageFrequency, JSON.stringify(accessibilityOptions), ventilationType], callback);
 };
 
-exports.saveFacility = (roles, facilities, selectedFacilities, callback) => {
+exports.saveFacility = (basicId, roles, facilities, selectedFacilities, callback) => {
   const query = `
-    INSERT INTO facility (roles, facilities, selectedFacilities)
-    VALUES (?, ?, ?)
+    INSERT INTO facility (basic_id, roles, facilities, selectedFacilities)
+    VALUES (?, ?, ?, ?)
   `;
-  db.query(query, [JSON.stringify(roles), JSON.stringify(facilities), JSON.stringify(selectedFacilities)], callback);
+  db.query(query, [basicId, JSON.stringify(roles), JSON.stringify(facilities), JSON.stringify(selectedFacilities)], callback);
 };
 
-// New function to fetch combined data
 exports.fetchCombinedData = (callback) => {
   const query = `
     SELECT 
@@ -55,14 +49,8 @@ exports.fetchCombinedData = (callback) => {
       f.facilities,
       f.selectedFacilities
     FROM basic b
-    LEFT JOIN venue_type v ON b.id = v.id
-    LEFT JOIN facility f ON b.id = f.id
+    LEFT JOIN venue_type v ON b.id = v.basic_id
+    LEFT JOIN facility f ON b.id = f.basic_id
   `;
   db.query(query, callback);
-};
-
-// New function to delete a row by uniqueId
-exports.deleteRow = (uniqueId, callback) => {
-  const query = 'DELETE FROM basic WHERE uniqueId = ?';
-  db.query(query, [uniqueId], callback);
 };

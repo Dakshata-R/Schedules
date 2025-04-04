@@ -1,25 +1,49 @@
-import React from "react";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-import AuthPage from "./pages/loginpage";
-import AppLayout from "./applayout/applayout"; // Import AppLayout component
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import LoginPage from './pages/loginpage';
+import AppLayout from './applayout/applayout';
+import HomeRouting from './applayout/homerouting';
+import ProtectedRoute from './protectedroute';
 
-const App = () => {
+function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
-        {/* Public Route */}
-        <Route path="/" element={<AuthPage />} />
-
-        {/* Protected Routes */}
-        <Route path="/dashboard/*" element={<AppLayout />}>
-          {/* Nested routes are handled by HomeRouting inside AppLayout */}
+        <Route path="/login" element={<LoginPage />} />
+        
+        {/* Protected routes */}
+        <Route element={<AppLayout />}>
+          <Route 
+            path="/admin/dashboard" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <HomeRouting />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/faculty/dashboard/*" 
+            element={
+              <ProtectedRoute allowedRoles={['faculty']}>
+                <HomeRouting />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/student/dashboard/*" 
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <HomeRouting />
+              </ProtectedRoute>
+            } 
+          />
         </Route>
-
-        {/* Fallback Route */}
-        <Route path="*" element={<div>Page not found</div>} />
+        
+        {/* Redirects */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
-};
+}
 
 export default App;

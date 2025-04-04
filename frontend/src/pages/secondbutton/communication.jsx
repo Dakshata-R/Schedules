@@ -39,7 +39,7 @@ const Communication = ({ onUpdate3 }) => {
 
   const handleSubmit = async () => {
     try {
-        const response = await fetch("http://localhost:5000/api/communication", { // ✅ Correct API endpoint
+        const response = await fetch("http://localhost:8000/api/communication", { // ✅ Correct API endpoint
             method: "POST",
             headers: { "Content-Type": "application/json" }, // ✅ JSON data format
             body: JSON.stringify(formData)

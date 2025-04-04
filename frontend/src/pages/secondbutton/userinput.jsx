@@ -76,7 +76,7 @@ const UserInput = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/fetch-data");
+        const response = await fetch("http://localhost:8000/api/fetch-data");
         if (response.ok) {
           const data = await response.json();
           setFetchedData(data);
@@ -155,7 +155,7 @@ const UserInput = () => {
   const handleCreate = async () => {
     try {
       const combinedData = { ...formData };
-      const response = await fetch("http://localhost:5000/api/save-student", {
+      const response = await fetch("http://localhost:8000/api/save-student", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(combinedData),
@@ -179,7 +179,7 @@ const UserInput = () => {
   const handleSaveDraft = async () => {
     try {
       const combinedData = { ...formData };
-      const response = await fetch("http://localhost:5000/api/save-draft", {
+      const response = await fetch("http://localhost:8000/api/save-draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(combinedData),
@@ -201,7 +201,7 @@ const UserInput = () => {
   return (
     <Paper
       sx={{
-        width: "70%",
+        width: "100%",
         backgroundColor: "#fff",
         borderRadius: "12px",
         padding: "20px",

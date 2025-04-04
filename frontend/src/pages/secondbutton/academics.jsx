@@ -85,7 +85,7 @@ const Academic = ({ onUpdate }) => {
 
     try {
       // Send the data to the backend
-      const response = await fetch("http://localhost:5000/api/academic", {
+      const response = await fetch("http://localhost:8000/api/academic", {
         method: "POST",
         body: formDataToSend,
       });

@@ -336,12 +336,11 @@ function ScheduleView() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box sx={{ backgroundColor: "#f5f6fa", minHeight: "100vh", padding: "16px" }}>
+      <Box sx={{ backgroundColor: "#f6f5fa", minHeight: "100vh",width:"88vw", padding: "18px" }}>
         {/* Top Container */}
         <Box
           sx={{
             padding: "6px",
-            marginLeft: "80px",
             marginTop: "45px",
             backgroundColor: "#ffffff",
             borderRadius: "8px",
@@ -369,7 +368,7 @@ function ScheduleView() {
             </Tabs>
           
             {/* Search Icon and Text */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: "1px", marginLeft: "auto" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: "1px"}}>
               <IconButton sx={{ padding: "6px" }}>
                 <SearchIcon sx={{ fontSize: "21px", color: "#000" }} />
               </IconButton>
@@ -396,7 +395,6 @@ function ScheduleView() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginLeft: "80px",
             marginTop: "16px",
             mb: 2,
           }}
@@ -499,7 +497,7 @@ function ScheduleView() {
         </Box>
 
         {/* Content View */}
-        <Box sx={{ marginLeft: "80px", marginTop: "16px" }}>
+        <Box sx={{  marginTop: "16px" }}>
           {view === "timeline" ? (
             <TimelineView timeRange={timeRange} date={dateRange.startDate} />
           ) : (

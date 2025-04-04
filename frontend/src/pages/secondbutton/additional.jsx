@@ -25,7 +25,7 @@ const Additional = () => {
     formData.append("file", uploadedFile);
 
     try {
-      const response = await axios.post("http://localhost:5000/api/additional/upload", formData, {
+      const response = await axios.post("http://localhost:8000/api/additional/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 

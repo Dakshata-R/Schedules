@@ -1,155 +1,394 @@
-import React, { useState } from "react";
-import { Button, TextField, Typography, Box, Paper } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { 
+  Box, Button, TextField, Typography, Paper, 
+  CircularProgress, Alert, InputAdornment, 
+  IconButton, Divider, Link 
+} from '@mui/material';
+import { Email, Lock, Visibility, VisibilityOff } from '@mui/icons-material';
 
-const AuthPage = () => {
-  const [isRegister, setIsRegister] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState("student");
-  const [message, setMessage] = useState("");
+const LoginPage = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordSetup, setShowPasswordSetup] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
 
-    const url = isRegister
-      ? "http://localhost:5000/api/auth/register"
-      : "http://localhost:5000/api/auth/login";
+    if (!email || !password) {
+      setError('Please fill in all fields');
+      setLoading(false);
+      return;
+    }
 
-    const payload = isRegister
-      ? { email, password, role }
-      : { email, password };
+    if (!email.includes('@')) {
+      setError('Please enter a valid email');
+      setLoading(false);
+      return;
+    }
 
     try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const response = await axios.post('http://localhost:8000/api/auth/login', { 
+        email, 
+        password 
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage(data.message);
-        if (!isRegister) {
-          localStorage.setItem("token", data.token); // Store the JWT token
-          localStorage.setItem("role", data.role); // Store the user's role
-          localStorage.setItem("email", email); // Store the logged-in email
-          navigate("/dashboard"); // Navigate to the dashboard after successful login
-        }
-      } else {
-        setMessage(data.message || "An error occurred");
+      if (response.data.success) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('role', response.data.role);
+        navigate(`/${response.data.role}/dashboard`);
       }
     } catch (error) {
-      setMessage("Server error. Please try again later.");
+      setError(error.response?.data?.message || 'Login failed. Please try again.');
+      setLoading(false);
     }
   };
 
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100vh",
-        backgroundColor: "#f0f2f5",
-      }}
-    >
-      <Paper
-        elevation={3}
-        sx={{
-          padding: 4,
-          width: 400,
-          textAlign: "center",
-          backgroundColor: "#fff",
-          borderRadius: 2,
-        }}
-      >
-        <Typography variant="h5" sx={{ marginBottom: 3, fontWeight: "bold" }}>
-          {isRegister ? "Register" : "Login"}
-        </Typography>
+  const handlePasswordSetup = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
 
-        {message && (
-          <Typography
-            variant="body2"
-            sx={{
-              color: isRegister ? "green" : "blue",
-              marginBottom: 2,
-            }}
-          >
-            {message}
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await axios.post('http://localhost:8000/api/auth/setup-password', { 
+        email, 
+        password: newPassword 
+      });
+
+      if (response.data.success) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('role', response.data.role);
+        navigate(`/${response.data.role}/dashboard`);
+      }
+    } catch (error) {
+      setError(error.response?.data?.message || 'Password setup failed. Please try again.');
+      setLoading(false);
+    }
+  };
+  if (showPasswordSetup) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        p: 2
+      }}>
+        <Paper elevation={6} sx={{ 
+          p: 4, 
+          width: '100%', 
+          maxWidth: 450,
+          borderRadius: 2,
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+        }}>
+          <Box textAlign="center" mb={3}>
+            <Typography variant="h4" sx={{ 
+              fontWeight: 700, 
+              color: 'darkgreen',
+              mb: 1 
+            }}>
+              Set Up Your Password
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Please create a new password for your account
+            </Typography>
+          </Box>
+          
+          {error && (
+            <Alert severity="error" sx={{ 
+              mb: 3, 
+              borderRadius: 1,
+              backgroundColor: '#ffebee',
+              color: '#b71c1c'
+            }}>
+              {error}
+            </Alert>
+          )}
+
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handlePasswordSetup();
+          }}>
+            <TextField
+              fullWidth
+              label="New Password"
+              type={showPassword ? 'text' : 'password'}
+              variant="outlined"
+              margin="normal"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Lock sx={{ color: 'darkgreen' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton 
+                      onClick={() => setShowPassword(!showPassword)} 
+                      edge="end"
+                      sx={{ color: 'darkgreen' }}
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ 
+                mb: 2,
+                '& .MuiOutlinedInput-root': {
+                  '&.Mui-focused fieldset': {
+                    borderColor: 'darkgreen',
+                  },
+                },
+                '& .MuiInputLabel-root.Mui-focused': {
+                  color: 'darkgreen',
+                }
+              }}
+            />
+            
+            <TextField
+              fullWidth
+              label="Confirm Password"
+              type={showPassword ? 'text' : 'password'}
+              variant="outlined"
+              margin="normal"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Lock sx={{ color: 'darkgreen' }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ 
+                mb: 2,
+                '& .MuiOutlinedInput-root': {
+                  '&.Mui-focused fieldset': {
+                    borderColor: 'darkgreen',
+                  },
+                },
+                '& .MuiInputLabel-root.Mui-focused': {
+                  color: 'darkgreen',
+                }
+              }}
+            />
+            
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              sx={{ 
+                mt: 1, 
+                py: 1.5,
+                backgroundColor: 'darkgreen',
+                '&:hover': {
+                  backgroundColor: '#006400',
+                }
+              }}
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={24} color="inherit" /> : 'Set Password'}
+            </Button>
+          </form>
+        </Paper>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+      p: 2
+    }}>
+      <Paper elevation={6} sx={{ 
+        p: 4, 
+        width: '100%', 
+        maxWidth: 450,
+        borderRadius: 2,
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+      }}>
+        <Box textAlign="center" mb={3}>
+          <Typography variant="h4" sx={{ 
+            fontWeight: 700, 
+            color: 'darkgreen',
+            mb: 1 
+          }}>
+            Welcome Back
           </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Sign in to access your account
+          </Typography>
+        </Box>
+        
+        {error && (
+          <Alert severity="error" sx={{ 
+            mb: 3, 
+            borderRadius: 1,
+            backgroundColor: '#ffebee',
+            color: '#b71c1c'
+          }}>
+            {error}
+          </Alert>
         )}
 
         <form onSubmit={handleSubmit}>
           <TextField
             fullWidth
-            label="Email"
-            type="email"
+            label="Email Address"
+            variant="outlined"
+            margin="normal"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            sx={{ marginBottom: 2 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Email sx={{ color: 'darkgreen' }} />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ 
+              mb: 2,
+              '& .MuiOutlinedInput-root': {
+                '&.Mui-focused fieldset': {
+                  borderColor: 'darkgreen',
+                },
+              },
+              '& .MuiInputLabel-root.Mui-focused': {
+                color: 'darkgreen',
+              }
+            }}
           />
-
+          
           <TextField
             fullWidth
             label="Password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
+            variant="outlined"
+            margin="normal"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            sx={{ marginBottom: 2 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Lock sx={{ color: 'darkgreen' }} />
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton 
+                    onClick={() => setShowPassword(!showPassword)} 
+                    edge="end"
+                    sx={{ color: 'darkgreen' }}
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+            sx={{ 
+              mb: 1,
+              '& .MuiOutlinedInput-root': {
+                '&.Mui-focused fieldset': {
+                  borderColor: 'darkgreen',
+                },
+              },
+              '& .MuiInputLabel-root.Mui-focused': {
+                color: 'darkgreen',
+              }
+            }}
           />
-
-          {isRegister && (
-            <TextField
-              fullWidth
-              select
-              label="Role"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              SelectProps={{ native: true }}
-              sx={{ marginBottom: 2 }}
+          
+          <Box textAlign="right" mb={3}>
+            <Link 
+              href="#" 
+              variant="body2" 
+              underline="hover"
+              sx={{ color: 'darkgreen' }}
             >
-              <option value="student">Student</option>
-              <option value="faculty">Faculty</option>
-            </TextField>
-          )}
-
+              Forgot password?
+            </Link>
+          </Box>
+          
           <Button
             type="submit"
             fullWidth
             variant="contained"
-            sx={{
-              backgroundColor: "#4caf50",
-              color: "#fff",
-              marginBottom: 2,
-              "&:hover": { backgroundColor: "#388e3c" },
+            sx={{ 
+              mt: 1, 
+              py: 1.5,
+              backgroundColor: 'darkgreen',
+              '&:hover': {
+                backgroundColor: '#006400',
+              }
             }}
+            disabled={loading}
           >
-            {isRegister ? "Register" : "Login"}
+            {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
           </Button>
+          
+          <Divider sx={{ 
+            my: 3,
+            '&::before, &::after': {
+              borderColor: 'darkgreen',
+            }
+          }}>
+            <Typography variant="body2" sx={{ color: 'darkgreen' }}>
+              OR
+            </Typography>
+          </Divider>
+          
+          <Box textAlign="center" mt={2}>
+            <Typography variant="body2" color="text.secondary">
+              Don't have an account?{' '}
+              <Link 
+                href="#" 
+                underline="hover" 
+                sx={{ 
+                  fontWeight: 600,
+                  color: 'darkgreen'
+                }}
+              >
+                Sign up
+              </Link>
+            </Typography>
+          </Box>
         </form>
-
-        <Typography variant="body2">
-          {isRegister ? "Already have an account? " : "New user? "}
-          <Button
-            onClick={() => setIsRegister(!isRegister)}
-            sx={{
-              color: "#4caf50",
-              textTransform: "none",
-              fontWeight: "bold",
-              "&:hover": { backgroundColor: "transparent" },
-            }}
-          >
-            {isRegister ? "Login" : "Register"}
-          </Button>
-        </Typography>
       </Paper>
     </Box>
   );
 };
 
-export default AuthPage;
+export default LoginPage;

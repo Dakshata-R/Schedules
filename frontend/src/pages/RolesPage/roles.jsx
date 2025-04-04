@@ -52,7 +52,7 @@ const Roles = () => {
   // Fetch roles from the backend
   const fetchRoles = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/getRoles");
+      const response = await fetch("http://localhost:8000/api/getRoles");
       if (response.ok) {
         const data = await response.json();
         setRoles(data);
@@ -197,7 +197,7 @@ const Roles = () => {
   // Function to delete a role from the backend and frontend
   const handleDeleteRole = async (roleId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/deleteRole/${roleId}`, {
+      const response = await fetch(`http://localhost:8000/api/deleteRole/${roleId}`, {
         method: "DELETE",
       });
 
@@ -247,7 +247,12 @@ const Roles = () => {
   return (
     <Box
       sx={{
-        width: "72%",
+        backgroundColor: "#f5f6fa",//#f5f6fa
+        minHeight: "100vh",
+        width: "72vw",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
         marginTop: "30px",
       }}
     >
@@ -419,7 +424,7 @@ const Roles = () => {
                         <Tooltip key={index} title={member} arrow>
                           <Avatar
                             alt={member}
-                            src={`https://via.placeholder.com/40?text=${member[0]}`}
+                            src={`https://placehold.co/40?text=${member[0]}`}
                             sx={{
                               width: 40,
                               height: 40,

@@ -37,6 +37,7 @@ const GreenCheckbox = styled(Checkbox)({
 const FacultyFiles = () => {
   const [requests, setRequests] = useState([]);
   const [selectedRequests, setSelectedRequests] = useState([]);
+  const [selectedEmails, setSelectedEmails] = useState([]); // New state for emails
   const [facultyName, setFacultyName] = useState("");
   const [error, setError] = useState("");
   const [hasPermission, setHasPermission] = useState(false);
@@ -84,14 +85,23 @@ const FacultyFiles = () => {
           );
           const requestsWithDetails = await Promise.all(
             requestsResponse.data.map(async (request) => {
-              const detailsResponse = await axios.get(
-                `http://localhost:5000/api/student-requests/${request.email}/details`
-              );
-              return {
-                ...request,
-                mobile_number: detailsResponse.data.mobile_number,
-                register_id: detailsResponse.data.register_id,
-              };
+              try {
+                const detailsResponse = await axios.get(
+                  `http://localhost:5000/api/student-requests/${request.email}/details`
+                );
+                return {
+                  ...request,
+                  mobile_number: detailsResponse.data.mobile_number,
+                  register_id: detailsResponse.data.register_id,
+                };
+              } catch (error) {
+                console.error(`Error fetching details for ${request.email}:`, error);
+                return {
+                  ...request,
+                  mobile_number: "N/A",
+                  register_id: "N/A",
+                };
+              }
             })
           );
           setRequests(requestsWithDetails);
@@ -115,7 +125,7 @@ const FacultyFiles = () => {
     setSkillFilter(event.target.value);
   };
 
-  const handleSelectRequest = (requestId) => {
+  const handleSelectRequest = (requestId, requestEmail) => {
     setSelectedRequests(prevSelected => {
       if (prevSelected.includes(requestId)) {
         return prevSelected.filter(id => id !== requestId);
@@ -123,22 +133,45 @@ const FacultyFiles = () => {
         return [...prevSelected, requestId];
       }
     });
+    
+    setSelectedEmails(prevEmails => {
+      if (prevEmails.includes(requestEmail)) {
+        return prevEmails.filter(email => email !== requestEmail);
+      } else {
+        return [...prevEmails, requestEmail];
+      }
+    });
   };
 
   const handleSelectAll = (event) => {
     if (event.target.checked) {
       const allIds = currentRows.map(row => row._id);
+      const allEmails = currentRows.map(row => row.email);
       setSelectedRequests(allIds);
+      setSelectedEmails(allEmails);
     } else {
       setSelectedRequests([]);
+      setSelectedEmails([]);
     }
   };
 
-  const uniqueSkills = [...new Set(requests.flatMap((request) => JSON.parse(request.skills)))];
+  const uniqueSkills = [...new Set(requests.flatMap((request) => {
+    try {
+      return JSON.parse(request.skills);
+    } catch (error) {
+      console.error("Error parsing skills:", error);
+      return [];
+    }
+  }))];
 
   const filteredRequests = requests.filter((request) => {
     const matchesSearch = request.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSkill = skillFilter === "all" || JSON.parse(request.skills).includes(skillFilter);
+    let matchesSkill = true;
+    try {
+      matchesSkill = skillFilter === "all" || JSON.parse(request.skills).includes(skillFilter);
+    } catch (error) {
+      console.error("Error parsing skills for filter:", error);
+    }
     return matchesSearch && matchesSkill;
   });
 
@@ -168,6 +201,10 @@ const FacultyFiles = () => {
   };
 
   const handleOpenSlotDialog = () => {
+    if (selectedEmails.length === 0) {
+      alert("Please select at least one student to create a schedule");
+      return;
+    }
     setOpenSlotDialog(true);
   };
 
@@ -179,12 +216,13 @@ const FacultyFiles = () => {
     <Box
       sx={{
         padding: "6px",
-        marginLeft: "80px",
+        marginLeft: "8px",
         marginTop: "45px",
         backgroundColor: "#ffffff",
         borderRadius: "8px",
         boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
         mb: 2,
+        width:"88vw"
       }}
     >
       <Box sx={{ padding: "16px" }}>
@@ -270,7 +308,7 @@ const FacultyFiles = () => {
               <Select value={skillFilter} onChange={handleSkillFilter} label="Skill">
                 <MenuItem value="all">All Skills</MenuItem>
                 {uniqueSkills.map((skill, index) => (
-                  <MenuItem key={`skill-${skill}-${index}`} value={skill}>
+                  <MenuItem key={`skill-${index}`} value={skill}>
                     {skill}
                   </MenuItem>
                 ))}
@@ -300,7 +338,7 @@ const FacultyFiles = () => {
           <Box sx={{ display: "flex", gap: 2, flexGrow: 1, justifyContent: "space-between" }}>
             {(showInitialSlots ? initialSlots : nextSlots).map((time, index) => (
               <Chip
-                key={`time-${time}-${index}`}
+                key={`time-${index}`}
                 label={time}
                 sx={{
                   backgroundColor: "white",
@@ -322,14 +360,18 @@ const FacultyFiles = () => {
         </Box>
 
         {/* Slot Creation Dialog */}
-        <Dialog
-          open={openSlotDialog}
-          onClose={handleCloseSlotDialog}
-          maxWidth="md"
-          fullWidth
-        >
-          <SlotCreation />
-        </Dialog>
+        // In FacultyFiles component
+<Dialog
+  open={openSlotDialog}
+  onClose={handleCloseSlotDialog}
+  maxWidth="md"
+  fullWidth
+>
+  <SlotCreation 
+    onClose={handleCloseSlotDialog} 
+    selectedStudents={selectedEmails} 
+  />
+</Dialog>
 
         {hasPermission ? (
           <>
@@ -373,7 +415,7 @@ const FacultyFiles = () => {
                         <TableCell padding="checkbox">
                           <GreenCheckbox
                             checked={selectedRequests.includes(request._id)}
-                            onChange={() => handleSelectRequest(request._id)}
+                            onChange={() => handleSelectRequest(request._id, request.email)}
                             icon={<CheckCircleIcon />}
                             checkedIcon={<CheckCircleIcon />}
                           />
@@ -394,7 +436,16 @@ const FacultyFiles = () => {
                             day: 'numeric',
                           })}
                         </TableCell>
-                        <TableCell>{JSON.parse(request.skills).join(", ")}</TableCell>
+                        <TableCell>
+                          {(() => {
+                            try {
+                              return JSON.parse(request.skills).join(", ");
+                            } catch (error) {
+                              console.error("Error parsing skills:", error);
+                              return "N/A";
+                            }
+                          })()}
+                        </TableCell>
                         <TableCell>
                           <MoreVertIcon sx={{ color: "blue" }} />
                         </TableCell>

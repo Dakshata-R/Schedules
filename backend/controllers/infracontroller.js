@@ -1,52 +1,42 @@
 const infraModel = require('../models/inframodals');
 
-// Existing controller functions
 exports.saveBasic = (req, res) => {
   const { uniqueId, venueName, location, priority, primaryPurpose, responsiblePersons } = req.body;
   const imagePath = req.file ? req.file.path : '';
 
-  infraModel.saveBasic(uniqueId, venueName, location, priority, primaryPurpose, responsiblePersons, imagePath, (err, result) => {
+  infraModel.saveBasic(uniqueId, venueName, location, priority, primaryPurpose, responsiblePersons, imagePath, (err, basicId) => {
     if (err) {
       console.error('Error saving basic data:', err);
-      res.status(500).send('Error saving basic data');
-      return;
+      return res.status(500).send('Error saving basic data');
     }
-    res.status(200).send('Basic data saved successfully');
+    res.status(200).json({ basicId, message: 'Basic data saved successfully' });
   });
 };
 
 exports.saveVenueType = (req, res) => {
-  const { capacity, floor, maintenanceFrequency, usageFrequency, accessibilityOptions, ventilationType } = req.body;
+  const { basicId, capacity, floor, maintenanceFrequency, usageFrequency, accessibilityOptions, ventilationType } = req.body;
 
-  infraModel.saveVenueType(capacity, floor, maintenanceFrequency, usageFrequency, accessibilityOptions, ventilationType, (err, result) => {
+  infraModel.saveVenueType(basicId, capacity, floor, maintenanceFrequency, usageFrequency, accessibilityOptions, ventilationType, (err, result) => {
     if (err) {
       console.error('Error saving venue type data:', err);
-      res.status(500).send('Error saving venue type data');
-      return;
+      return res.status(500).send('Error saving venue type data');
     }
     res.status(200).send('Venue type data saved successfully');
   });
 };
 
 exports.saveFacility = (req, res) => {
-  const { id, roles, facilities, selectedFacilities } = req.body;
+  const { basicId, accessibilityOptions, facilities, selectedFacilities } = req.body;
 
-  // Ensure that roles, facilities, and selectedFacilities are arrays
-  if (!Array.isArray(roles) || !Array.isArray(facilities) || !Array.isArray(selectedFacilities)) {
-    return res.status(400).send('Invalid data format: roles, facilities, and selectedFacilities must be arrays');
-  }
-
-  infraModel.saveFacility(id, roles, facilities, selectedFacilities, (err, result) => {
+  infraModel.saveFacility(basicId, accessibilityOptions, facilities, selectedFacilities, (err, result) => {
     if (err) {
       console.error('Error saving facility data:', err);
-      res.status(500).send('Error saving facility data');
-      return;
+      return res.status(500).send('Error saving facility data');
     }
     res.status(200).send('Facility data saved successfully');
   });
 };
 
-// New controller function to fetch combined data
 exports.fetchCombinedData = (req, res) => {
   infraModel.fetchCombinedData((err, results) => {
     if (err) {
@@ -58,7 +48,6 @@ exports.fetchCombinedData = (req, res) => {
   });
 };
 
-// New controller function to delete a row by uniqueId
 exports.deleteRow = (req, res) => {
   const { uniqueId } = req.params;
 

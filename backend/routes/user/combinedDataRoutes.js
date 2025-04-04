@@ -1,0 +1,7 @@
+const express = require('express');
+const router = express.Router();
+const combinedDataController = require('../../controllers/user/combinedDataController');
+
+router.get('/fetch-data', combinedDataController.getCombinedData);
+
+module.exports = router;

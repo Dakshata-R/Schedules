@@ -187,7 +187,7 @@ const AdvisorDetails = () => {
     };
 
     try {
-        await axios.post('http://localhost:5000/api/advisors', advisorData);
+        await axios.post('http://localhost:8000/api/advisors', advisorData);
         setSaveStatus('Saved!'); // ✅ Show success message
     } catch (error) {
         console.error('Error saving advisor details:', error);

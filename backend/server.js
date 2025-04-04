@@ -1,55 +1,75 @@
+require('dotenv').config();
 const express = require('express');
-const bodyParser = require('body-parser');
 const cors = require('cors');
+const morgan = require('morgan');
 const path = require('path');
+const fs = require('fs');
+const errorHandler = require('./middleware/errorHandler');
+
+// Import routes
+const authRoutes = require('./routes/login/authRoutes');
+const personalRoutes = require('./routes/user/personalRoutes');
+const academicRoutes = require('./routes/user/academicRoutes');
+const communicationRoutes = require('./routes/user/communicationRoutes');
+const advisorRoutes = require('./routes/user/advisorRoutes');
+const healthRoutes = require('./routes/user/healthRoutes');
+const additionalRoutes = require('./routes/user/additionalRoutes');
+const combinedDataRoutes = require('./routes/user/combinedDataRoutes');
+const roleRoutes = require('./routes/role/roleroutes');
 const infraRoutes = require('./routes/infraroutes');
-const roleRoutes = require('./routes/roleroutes');
-const personalRoutes = require('./routes/personalRoutes');
-const academicRoutes = require('./routes/academicRoutes');
-const communicationRoutes = require('./routes/communicationRoutes');
-const advisorRoutes = require('./routes/advisorRoutes');
-const healthRoutes = require('./routes/healthRoutes'); // 👈 Correct import for healthRoutes
-const additionalRoutes = require('./routes/additionalRoutes'); // 👈 Import additionalRoutes
-const combinedDataRoutes = require('./routes/combinedDataRoutes');
-const authRoutes = require("./routes/loginroutes");
-const venueRoutes = require('./routes/venueRoutes');
-const RequestRoutes = require('./routes/RequestRoutes'); 
-const nameRoutes = require("./routes/nameRoutes");
-const facultyRoutes = require('./routes/facultyRoutes');
-const permissionsRoutes = require('./routes/permissionsRoutes');
-const studentRequestsRoutes = require('./routes/studentRequestsRoutes');
-
-
-
+const studentRoutes = require('./routes/studentRoutes');
 const app = express();
-const port = 5000;
 
-// Middleware
+// ======================
+// 1. Directory Setup
+// ======================
+const uploadDirs = [
+  path.join(__dirname, 'uploads_additional'),
+  path.join(__dirname, 'uploads_health')
+];
+
+// Create upload directories if they don't exist
+uploadDirs.forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log(`Created directory: ${dir}`);
+  }
+});
+
+// ======================
+// 2. Middleware
+// ======================
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true })); // 👈 Add this for form data
-app.use('/uploads_additional', express.static(path.join(__dirname, 'uploads_additional'))); // 👈 Serve static files for additional uploads
+app.use(express.json());
+app.use(morgan('dev'));
 
-// Routes
-app.use(infraRoutes);
-app.use(roleRoutes);
+// Serve static files
+app.use('/uploads_additional', express.static(uploadDirs[0]));
+app.use('/uploads_health', express.static(uploadDirs[1]));
+
+// ======================
+// 3. Routes
+// ======================
+app.use('/api/auth', authRoutes);
 app.use('/api', personalRoutes);
 app.use('/api', academicRoutes);
 app.use('/api', communicationRoutes);
 app.use('/api', advisorRoutes);
-app.use('/api', healthRoutes); // 👈 Use healthRoutes
-app.use('/api', additionalRoutes); 
+app.use('/api', healthRoutes);
+app.use('/api', additionalRoutes);
 app.use('/api', combinedDataRoutes);
-app.use("/api/auth", authRoutes);
-app.use('/api', venueRoutes);
-app.use('/api', RequestRoutes);
-app.use("/api", nameRoutes);
-app.use('/api/faculty', facultyRoutes);
-app.use('/api/permissions', permissionsRoutes);
-app.use('/api/student-requests', studentRequestsRoutes);
-// 👈 Use additionalRoutes
+app.use(roleRoutes);
+app.use(infraRoutes);
+app.use('/api/students', studentRoutes);
 
-// Start the server
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+// ======================
+// 4. Error Handling
+// ======================
+app.use(errorHandler);
+
+const PORT = process.env.PORT || 8000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log('Upload directories:');
+  uploadDirs.forEach(dir => console.log(`- ${dir}`));
 });

@@ -42,7 +42,7 @@ const AccommodationForm = () => {
     formData.append('file', uploadedFile);
 
     try {
-      await axios.post('http://localhost:5000/api/health/upload', formData, {
+      await axios.post('http://localhost:8000/api/health/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setIsSaved(true);

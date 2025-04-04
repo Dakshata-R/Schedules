@@ -1,20 +1,16 @@
-import React from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation } from 'react-router-dom';
 
-const ProtectedRoute = ({ allowedRoles, children }) => {
+const ProtectedRoute = ({ children, allowedRoles }) => {
   const location = useLocation();
-  const token = localStorage.getItem("token"); // Get the token from localStorage
-  const role = localStorage.getItem("role"); // Get the user's role from localStorage
+  const role = localStorage.getItem('role');
+  const token = localStorage.getItem('token');
 
-  // If no token, redirect to login
   if (!token) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Check if the user's role is allowed
   if (!allowedRoles.includes(role)) {
-    // Redirect to a safe route (e.g., dashboard) if the role is not allowed
-    return <Navigate to="/dashboard" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   return children;

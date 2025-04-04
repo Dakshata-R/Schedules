@@ -1,24 +1,39 @@
 import { Routes, Route } from "react-router-dom";
-import ScheduleView from "../Student/StudentHome"; // Import ScheduleView
-import RequestsList from "../Student/StudentFiles"; // Import RequestsList
-import Home from "../faculty/facultyhome"; // Import Home
-import Users from "../pages/secondbutton/create"; // Import UserInput
+import Home from "../faculty/facultyhome";
+import Users from "../pages/secondbutton/create";
 import Files from "../faculty/Files";
+import StudentHome from "../Student/StudentHome";
+import StudentFiles from "../Student/StudentFiles";
 
 const HomeRouting = () => {
   return (
     <Routes>
-      {/* Default route for the dashboard */}
-      <Route index element={<Home />} /> {/* Default to Home for the root path */}
+      {/* Default route based on role */}
+      <Route 
+        index 
+        element={
+          localStorage.getItem("role") === "student" ? 
+            <StudentHome /> : 
+            <Home /> 
+        } 
+      />
 
-      {/* Routes for Students */}
-      <Route path="studenthome" element={<ScheduleView />} />
-      <Route path="studentfiles" element={<RequestsList />} />
+      {/* Student routes */}
+      {localStorage.getItem("role") === "student" && (
+        <>
+          <Route path="studenthome" element={<StudentHome />} />
+          <Route path="files" element={<StudentFiles />} />
+        </>
+      )}
 
-      {/* Routes for Faculty */}
-      <Route path="home" element={<Home />} />
-      <Route path="create" element={< Users/>} />
-      <Route path="files" element={<Files />} />
+      {/* Faculty routes */}
+      {localStorage.getItem("role") === "faculty" && (
+        <>
+          <Route path="home" element={<Home />} />
+          <Route path="create" element={<Users />} />
+          <Route path="files" element={<Files />} />
+        </>
+      )}
     </Routes>
   );
 };

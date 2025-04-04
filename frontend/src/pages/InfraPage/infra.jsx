@@ -81,11 +81,15 @@ const Infra = () => {
 
   const fetchCombinedData = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/fetch-combined-data");
+      const response = await fetch('http://localhost:8000/api/fetch-combined-data');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
-      setCombinedData(data);
+      setVenues(data);
     } catch (error) {
-      console.error("Error fetching combined data:", error);
+      console.error('Error fetching combined data:', error);
+      // Handle error appropriately
     }
   };
 
@@ -127,6 +131,8 @@ const Infra = () => {
       setLoading(true);
       try {
         let response;
+        let basicId = basicData.id; // Get basicId if it exists (for subsequent steps)
+  
         if (activeStep === 0) {
           const formData = new FormData();
           formData.append("uniqueId", basicData.uniqueId);
@@ -138,43 +144,44 @@ const Infra = () => {
           if (basicData.image) {
             formData.append("image", basicData.image);
           }
-
-          response = await fetch("http://localhost:5000/api/save-basic", {
+  
+          response = await fetch("http://localhost:8000/api/save-basic", {
             method: "POST",
             body: formData,
           });
-        } else if (activeStep === 1) {
+          
+          const result = await response.json();
+          basicId = result.basicId; // Store the basicId for next steps
+          setBasicData(prev => ({ ...prev, id: basicId })); // Update state with the ID
+        } 
+        else if (activeStep === 1) {
           const payload = {
+            basicId,
             ...venueTypeData,
             accessibilityOptions: venueTypeData.accessibilityOptions || [],
           };
-
-          response = await fetch("http://localhost:5000/api/save-venue-type", {
+  
+          response = await fetch("http://localhost:8000/api/save-venue-type", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
-        } else if (activeStep === 2) {
+        } 
+        else if (activeStep === 2) {
           const payload = {
-            ...facilityData,
-            roles: facilityData.roles || [],
+            basicId,
+            roles: facilityData.accessibilityOptions || [],
             facilities: facilityData.facilities || [],
-            accessibilityOptions: facilityData.accessibilityOptions || [],
-            selectedFacilities: facilityData.selectedFacilities || [],
-            selectedUsers: facilityData.selectedUsers || [],
+            selectedFacilities: facilityData.selectedFacilities || []
           };
-
-          response = await fetch("http://localhost:5000/api/save-facility", {
+  
+          response = await fetch("http://localhost:8000/api/save-facility", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
         }
-
+  
         if (response.ok) {
           if (activeStep === steps.length - 1) {
             setShowContent(false);
@@ -185,7 +192,8 @@ const Infra = () => {
             setCompletedSteps((prevCompleted) => [...prevCompleted, activeStep]);
           }
         } else {
-          console.error("Failed to save data");
+          const error = await response.text();
+          console.error("Failed to save data:", error);
         }
       } catch (error) {
         console.error("Error saving data:", error);
@@ -228,7 +236,7 @@ const Infra = () => {
 
   const handleDelete = async (uniqueId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/delete-row/${uniqueId}`, {
+      const response = await fetch(`http://localhost:8000/api/delete-row/${uniqueId}`, {
         method: "DELETE",
       });
       if (response.ok) {
@@ -255,7 +263,7 @@ const Infra = () => {
   return (
     <Paper
       sx={{
-        width: "70%",
+        width: "70vw",
         backgroundColor: "#fff",
         borderRadius: "12px",
         padding: "20px",
