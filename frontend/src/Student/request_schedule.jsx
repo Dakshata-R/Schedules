@@ -32,37 +32,71 @@ const RequestSchedule = ({ open, handleClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Get the logged-in user's email from storage
-  const userEmail = localStorage.getItem('userEmail') || sessionStorage.getItem('userEmail');
+  // Get the logged-in user's email from localStorage
+  const userEmail = localStorage.getItem('userEmail');
+
   useEffect(() => {
+    console.log('Component mounted with open:', open, 'userEmail:', userEmail);
+    
     const fetchUserDetails = async () => {
-      if (!open || !userEmail) return;
-      
+      if (!open || !userEmail) {
+        console.log('Skipping fetch - dialog not open or no email');
+        return;
+      }
+
+      console.log('Starting fetch for email:', userEmail);
       setLoading(true);
       setError(null);
       
       try {
-        const response = await axios.get(`http://localhost:8000/api/students?email=${encodeURIComponent(userEmail)}`);
-        
+        const response = await axios.get(`http://localhost:8000/api/students`, {
+          params: { email: userEmail }
+        });
+
+        console.log('API Response:', {
+          status: response.status,
+          data: response.data,
+          config: response.config
+        });
+
         if (response.data) {
-          setUserDetails({
-            name: response.data.first_name || '', // Changed from response.data.name
-            rollNumber: response.data.rollNumber || '',
-            department: response.data.department || ''
-          });
+          const newDetails = {
+            name: response.data.first_name || 'Not available',
+            rollNumber: response.data.rollNumber || 'Not available',
+            department: response.data.department || 'Not available'
+          };
+          console.log('Setting user details:', newDetails);
+          setUserDetails(newDetails);
         } else {
+          console.warn('Empty response received');
           setError('Student data not found');
         }
       } catch (err) {
-        console.error("Error fetching user details:", err);
+        console.error("Fetch error:", {
+          message: err.message,
+          response: err.response?.data,
+          stack: err.stack
+        });
         setError(err.response?.data?.error || 'Failed to fetch student details');
       } finally {
         setLoading(false);
       }
     };
-  
+
     fetchUserDetails();
   }, [open, userEmail]);
+
+  // Debug: Monitor state changes
+  useEffect(() => {
+    console.log('Current state:', {
+      userDetails,
+      loading,
+      error,
+      skills,
+      priority
+    });
+  }, [userDetails, loading, error, skills, priority]);
+
   const handleAddSkill = () => {
     if (newSkill && !skills.includes(newSkill)) {
       setSkills([...skills, newSkill]);
@@ -70,21 +104,33 @@ const RequestSchedule = ({ open, handleClose }) => {
     }
   };
 
-  const handleMakeRequest = () => {
+  const handleMakeRequest = async () => {
     if (!priority) {
       setError('Please select a priority');
       return;
     }
     
-    // Here you would typically send the request to your backend
-    console.log('Submitting request with:', {
-      ...userDetails,
-      priority,
-      skills
-    });
-    
-    setSnackbarOpen(true);
-    handleClose();
+    try {
+      setLoading(true);
+      
+      const response = await axios.post('http://localhost:8000/api/requests', {
+        student_email: userEmail,
+        student_name: userDetails.name,
+        roll_number: userDetails.rollNumber,
+        department: userDetails.department,
+        priority,
+        skills
+      });
+  
+      console.log('Request submitted:', response.data);
+      setSnackbarOpen(true);
+      handleClose();
+    } catch (err) {
+      console.error('Submission error:', err);
+      setError(err.response?.data?.error || 'Failed to submit request');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCloseSnackbar = () => {
@@ -106,25 +152,52 @@ const RequestSchedule = ({ open, handleClose }) => {
   return (
     <>
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h5">Request Schedule</Typography>
-          <IconButton onClick={handleClose}>
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          backgroundColor: '#f5f5f5'
+        }}>
+          <Typography component="span" sx={{ 
+            fontSize: '1.25rem',
+            fontWeight: 600,
+            color: 'primary.main'
+          }}>
+            Request Schedule
+          </Typography>
+          <IconButton onClick={handleClose} sx={{ color: 'text.secondary' }}>
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent>
+        
+        <DialogContent dividers>
           <Box sx={{ padding: 2 }}>
             {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress />
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center',
+                minHeight: 200
+              }}>
+                <CircularProgress size={60} />
               </Box>
             ) : error ? (
-              <Alert severity="error" sx={{ mb: 2 }}>
+              <Alert severity="error" sx={{ mb: 3 }}>
                 {error}
+                <Button 
+                  size="small" 
+                  onClick={() => window.location.reload()}
+                  sx={{ ml: 2 }}
+                >
+                  Retry
+                </Button>
               </Alert>
             ) : (
               <>
-                <Box sx={{ marginBottom: 2 }}>
+                <Box sx={{ marginBottom: 3 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Student Information
+                  </Typography>
                   <TextField
                     label="Name"
                     variant="outlined"
@@ -134,10 +207,8 @@ const RequestSchedule = ({ open, handleClose }) => {
                     InputProps={{
                       readOnly: true,
                     }}
+                    sx={{ mb: 2 }}
                   />
-                </Box>
-
-                <Box sx={{ marginBottom: 2 }}>
                   <TextField
                     label="Roll Number"
                     variant="outlined"
@@ -147,10 +218,8 @@ const RequestSchedule = ({ open, handleClose }) => {
                     InputProps={{
                       readOnly: true,
                     }}
+                    sx={{ mb: 2 }}
                   />
-                </Box>
-
-                <Box sx={{ marginBottom: 2 }}>
                   <TextField
                     label="Department"
                     variant="outlined"
@@ -162,116 +231,114 @@ const RequestSchedule = ({ open, handleClose }) => {
                     }}
                   />
                 </Box>
+
+                <Box sx={{ marginBottom: 3 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Set Priority
+                  </Typography>
+                  <Box sx={{ display: "flex", gap: 2, marginBottom: 2 }}>
+                    {['High', 'Medium', 'Low'].map((level) => (
+                      <Chip
+                        key={level}
+                        label={level}
+                        onClick={() => setPriority(level)}
+                        sx={{
+                          px: 3,
+                          backgroundColor: priority === level ? 
+                            level === 'High' ? 'error.main' : 
+                            level === 'Medium' ? 'warning.main' : 'success.main' 
+                            : 'action.selected',
+                          color: priority === level ? 'common.white' : 'text.primary',
+                          '&:hover': {
+                            backgroundColor: 
+                              level === 'High' ? 'error.dark' : 
+                              level === 'Medium' ? 'warning.dark' : 'success.dark',
+                            color: 'common.white'
+                          },
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+
+                <Box sx={{ marginBottom: 3 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Requesting Skills
+                  </Typography>
+                  <Box sx={{ display: "flex", gap: 1, marginBottom: 2 }}>
+                    <TextField
+                      label="Add Skill"
+                      variant="outlined"
+                      value={newSkill}
+                      onChange={(e) => setNewSkill(e.target.value)}
+                      fullWidth
+                      size="small"
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddSkill()}
+                    />
+                    <Button
+                      variant="outlined"
+                      onClick={() => setIsAddSkillDialogOpen(true)}
+                      sx={{
+                        textTransform: "none",
+                        minWidth: 120
+                      }}
+                    >
+                      Browse Skills
+                    </Button>
+                  </Box>
+                  
+                  {skills.length > 0 ? (
+                    <Box sx={{ 
+                      display: "flex", 
+                      flexWrap: "wrap", 
+                      gap: 1,
+                      p: 1,
+                      border: '1px dashed',
+                      borderColor: 'divider',
+                      borderRadius: 1
+                    }}>
+                      {skills.map((skill, index) => (
+                        <Chip
+                          key={index}
+                          label={skill}
+                          onDelete={() => handleRemoveSkill(skill)}
+                          sx={{
+                            backgroundColor: 'success.light',
+                            color: 'success.dark',
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No skills added yet
+                    </Typography>
+                  )}
+                </Box>
               </>
             )}
-
-            <Box sx={{ marginBottom: 2 }}>
-              <Typography variant="body1" gutterBottom>
-                Set Priority
-              </Typography>
-              <Box sx={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
-                <Chip
-                  label="High"
-                  onClick={() => setPriority("High")}
-                  sx={{
-                    backgroundColor: priority === "High" ? "red" : "transparent",
-                    color: priority === "High" ? "white" : "red",
-                    border: "1px solid red",
-                    "&:hover": {
-                      backgroundColor: "red",
-                      color: "white",
-                    },
-                  }}
-                />
-                <Chip
-                  label="Medium"
-                  onClick={() => setPriority("Medium")}
-                  sx={{
-                    backgroundColor: priority === "Medium" ? "orange" : "transparent",
-                    color: priority === "Medium" ? "white" : "orange",
-                    border: "1px solid orange",
-                    "&:hover": {
-                      backgroundColor: "orange",
-                      color: "white",
-                    },
-                  }}
-                />
-                <Chip
-                  label="Low"
-                  onClick={() => setPriority("Low")}
-                  sx={{
-                    backgroundColor: priority === "Low" ? "green" : "transparent",
-                    color: priority === "Low" ? "white" : "green",
-                    border: "1px solid green",
-                    "&:hover": {
-                      backgroundColor: "green",
-                      color: "white",
-                    },
-                  }}
-                />
-              </Box>
-            </Box>
-
-            <Box sx={{ marginBottom: 3 }}>
-              <Typography variant="subtitle1" gutterBottom>
-                Requesting Skill
-              </Typography>
-              <Box sx={{ display: "flex", gap: 1, marginTop: 1 }}>
-                <TextField
-                  label="Add Skill"
-                  variant="outlined"
-                  value={newSkill}
-                  onChange={(e) => setNewSkill(e.target.value)}
-                  fullWidth
-                  size="small"
-                />
-                <Button
-                  variant="contained"
-                  onClick={() => setIsAddSkillDialogOpen(true)}
-                  sx={{
-                    backgroundColor: "#e0e0e0",
-                    color: "black",
-                    textTransform: "none",
-                    padding: "6px 16px",
-                  }}
-                >
-                  Add Skill
-                </Button>
-              </Box>
-
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, marginTop: 2 }}>
-                {skills.map((skill, index) => (
-                  <Chip
-                    sx={{
-                      backgroundColor: "#ecfdf5",
-                      color: "#059669",
-                      borderRadius: "20px",
-                    }}
-                    key={index}
-                    label={skill}
-                    onDelete={() => handleRemoveSkill(skill)}
-                  />
-                ))}
-              </Box>
-            </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={handleClose} variant="outlined" sx={{ mr: 2 }}>
+        
+        <DialogActions sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+          <Button 
+            onClick={handleClose} 
+            variant="outlined" 
+            sx={{ mr: 2 }}
+          >
             Cancel
           </Button>
           <Button 
             variant="contained" 
-            color="primary" 
             onClick={handleMakeRequest}
-            disabled={loading || error}
+            disabled={loading || error || !priority}
+            sx={{ px: 4 }}
           >
-            Submit Request
+            {loading ? <CircularProgress size={24} /> : 'Submit Request'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Add Skill Dialog */}
       <AddSkillDialog
         open={isAddSkillDialogOpen}
         onClose={() => setIsAddSkillDialogOpen(false)}
@@ -280,12 +347,16 @@ const RequestSchedule = ({ open, handleClose }) => {
 
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={3000}
+        autoHideDuration={6000}
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: "100%" }}>
-          Request sent successfully!
+        <Alert 
+          onClose={handleCloseSnackbar} 
+          severity="success" 
+          sx={{ width: "100%" }}
+        >
+          Schedule request submitted successfully!
         </Alert>
       </Snackbar>
     </>

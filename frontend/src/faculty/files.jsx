@@ -1,497 +1,377 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
+  Box,
+  Paper,
   Typography,
+  Button,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Box,
-  Button,
-  Chip,
   TextField,
-  InputAdornment,
   MenuItem,
-  Select,
   FormControl,
   InputLabel,
-  Checkbox,
-  styled,
-  Dialog,
+  Select,
+  Grid,
+  IconButton,
+  InputAdornment,
+  TableContainer,
+  Chip
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
+import {
+  Delete as DeleteIcon,
+  Search,
+  FilterList,
+  MoreVert
+} from "@mui/icons-material";
 import axios from "axios";
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import SlotCreation from "./SlotCreation";
+import SelectTemplate from "../components/schedules_template/SelectTemplate";
+import FacultyRequests from "./Facultyrequest";
 
-// Custom styled checkbox with green tick
-const GreenCheckbox = styled(Checkbox)({
-  '&.Mui-checked': {
-    color: '#2e7d32',
-  },
-});
-
-const FacultyFiles = () => {
-  const [requests, setRequests] = useState([]);
-  const [selectedRequests, setSelectedRequests] = useState([]);
-  const [selectedEmails, setSelectedEmails] = useState([]); // New state for emails
-  const [facultyName, setFacultyName] = useState("");
-  const [error, setError] = useState("");
-  const [hasPermission, setHasPermission] = useState(false);
+const FacultySchedules = () => {
+  const [currentView, setCurrentView] = useState('schedules');
   const [searchQuery, setSearchQuery] = useState("");
-  const [skillFilter, setSkillFilter] = useState("all");
-  const [showInitialSlots, setShowInitialSlots] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage] = useState(5);
-  const [openSlotDialog, setOpenSlotDialog] = useState(false);
-
-  const initialSlots = ["All slots", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM"];
-  const nextSlots = ["1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM"];
+  const [filterPriority, setFilterPriority] = useState("");
+  const [openTemplateDialog, setOpenTemplateDialog] = useState(false);
+  const [schedules, setSchedules] = useState([
+    {
+      id: 1,
+      name: "Schedule 1",
+      priority: "High",
+      date: "2023-05-15",
+      venue: "Sunflower Block",
+      responsiblePerson: "John Doe",
+      status: "Active",
+    },
+    {
+      id: 2,
+      name: "Schedule 2",
+      priority: "Medium",
+      date: "2023-05-16",
+      venue: "Sunflower Block",
+      responsiblePerson: "Jane Smith",
+      status: "Inactive",
+    },
+    {
+      id: 3,
+      name: "Schedule 3",
+      priority: "Low",
+      date: "2023-05-17",
+      venue: "Sunflower Block",
+      responsiblePerson: "Alice Johnson",
+      status: "Active",
+    },
+  ]);
+  const [displayedSchedules, setDisplayedSchedules] = useState(schedules);
+  const [hasStudentRequestPermission, setHasStudentRequestPermission] = useState(false);
 
   useEffect(() => {
-    const fetchFacultyData = async () => {
-      const loggedInEmail = localStorage.getItem("email");
+    const checkPermission = async () => {
+      const loggedInEmail = localStorage.getItem("userEmail");
       if (!loggedInEmail) {
-        alert("Please login first.");
+        console.error("No email found in localStorage");
         return;
       }
-
+  
       try {
-        const facultyResponse = await axios.get(
-          `http://localhost:5000/api/faculty?email=${loggedInEmail}`
+        const response = await axios.get(
+          `http://localhost:8000/api/faculty/has-student-request-role?email=${loggedInEmail}`
         );
-        const facultyData = facultyResponse.data;
-
-        if (!facultyData) {
-          alert("Faculty not found.");
-          return;
-        }
-
-        setFacultyName(facultyData.name);
-
-        const permissionResponse = await axios.get(
-          `http://localhost:5000/api/permissions?name=${facultyData.name}`
-        );
-        const permissionData = permissionResponse.data;
-
-        if (permissionData && permissionData.permission_label === "Student skill request approval") {
-          setHasPermission(true);
-
-          const requestsResponse = await axios.get(
-            "http://localhost:5000/api/student-requests"
-          );
-          const requestsWithDetails = await Promise.all(
-            requestsResponse.data.map(async (request) => {
-              try {
-                const detailsResponse = await axios.get(
-                  `http://localhost:5000/api/student-requests/${request.email}/details`
-                );
-                return {
-                  ...request,
-                  mobile_number: detailsResponse.data.mobile_number,
-                  register_id: detailsResponse.data.register_id,
-                };
-              } catch (error) {
-                console.error(`Error fetching details for ${request.email}:`, error);
-                return {
-                  ...request,
-                  mobile_number: "N/A",
-                  register_id: "N/A",
-                };
-              }
-            })
-          );
-          setRequests(requestsWithDetails);
-        } else {
-          setHasPermission(false);
-        }
+        setHasStudentRequestPermission(response.data.hasPermission);
       } catch (error) {
-        console.error("Error fetching data:", error);
-        setError("Failed to fetch data. Please try again later.");
+        console.error("Error checking permission:", error);
       }
     };
-
-    fetchFacultyData();
+  
+    checkPermission();
   }, []);
 
-  const handleSearch = (event) => {
-    setSearchQuery(event.target.value);
+  const handleNextPageSchedules = () => {
+    setCurrentPage((prevPage) => prevPage + 1);
   };
 
-  const handleSkillFilter = (event) => {
-    setSkillFilter(event.target.value);
+  const handlePreviousPageSchedules = () => {
+    setCurrentPage((prevPage) => prevPage - 1);
   };
 
-  const handleSelectRequest = (requestId, requestEmail) => {
-    setSelectedRequests(prevSelected => {
-      if (prevSelected.includes(requestId)) {
-        return prevSelected.filter(id => id !== requestId);
-      } else {
-        return [...prevSelected, requestId];
-      }
+  const filterSchedules = () => {
+    const filtered = schedules.filter((schedule) => {
+      const matchesSearchQuery =
+        schedule.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        schedule.responsiblePerson.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesPriority = filterPriority
+        ? schedule.priority === filterPriority
+        : true;
+
+      return matchesSearchQuery && matchesPriority;
     });
-    
-    setSelectedEmails(prevEmails => {
-      if (prevEmails.includes(requestEmail)) {
-        return prevEmails.filter(email => email !== requestEmail);
-      } else {
-        return [...prevEmails, requestEmail];
-      }
-    });
+
+    setDisplayedSchedules(filtered);
+    setCurrentPage(1);
   };
 
-  const handleSelectAll = (event) => {
-    if (event.target.checked) {
-      const allIds = currentRows.map(row => row._id);
-      const allEmails = currentRows.map(row => row.email);
-      setSelectedRequests(allIds);
-      setSelectedEmails(allEmails);
-    } else {
-      setSelectedRequests([]);
-      setSelectedEmails([]);
+  const handleViewAllSchedules = () => {
+    setSearchQuery("");
+    setFilterPriority("");
+    setDisplayedSchedules(schedules);
+    setCurrentPage(1);
+  };
+
+  const getPriorityStyles = (priority) => {
+    switch (priority) {
+      case "High":
+        return { color: "red", backgroundColor: "#ffebee" };
+      case "Medium":
+        return { color: "blue", backgroundColor: "#e3f2fd" };
+      case "Low":
+        return { color: "green", backgroundColor: "#e8f5e9" };
+      default:
+        return { color: "inherit", backgroundColor: "#f5f5f5" };
     }
   };
 
-  const uniqueSkills = [...new Set(requests.flatMap((request) => {
-    try {
-      return JSON.parse(request.skills);
-    } catch (error) {
-      console.error("Error parsing skills:", error);
-      return [];
-    }
-  }))];
+  const totalPagesSchedules = Math.ceil(displayedSchedules.length / rowsPerPage);
+  const paginatedSchedules = displayedSchedules.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
 
-  const filteredRequests = requests.filter((request) => {
-    const matchesSearch = request.name.toLowerCase().includes(searchQuery.toLowerCase());
-    let matchesSkill = true;
-    try {
-      matchesSkill = skillFilter === "all" || JSON.parse(request.skills).includes(skillFilter);
-    } catch (error) {
-      console.error("Error parsing skills for filter:", error);
-    }
-    return matchesSearch && matchesSkill;
-  });
-
-  const handleNext = () => {
-    setShowInitialSlots(false);
+  const navigateToRequests = () => {
+    setCurrentView('requests');
+    setCurrentPage(1);
   };
 
-  const handlePrevious = () => {
-    setShowInitialSlots(true);
-  };
-
-  const indexOfLastRow = currentPage * rowsPerPage;
-  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentRows = filteredRequests.slice(indexOfFirstRow, indexOfLastRow);
-  const totalPages = Math.ceil(filteredRequests.length / rowsPerPage);
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  const handlePreviousPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const handleOpenSlotDialog = () => {
-    if (selectedEmails.length === 0) {
-      alert("Please select at least one student to create a schedule");
-      return;
-    }
-    setOpenSlotDialog(true);
-  };
-
-  const handleCloseSlotDialog = () => {
-    setOpenSlotDialog(false);
+  const navigateToSchedules = () => {
+    setCurrentView('schedules');
+    setCurrentPage(1);
   };
 
   return (
-    <Box
-      sx={{
-        padding: "6px",
-        marginLeft: "8px",
-        marginTop: "45px",
-        backgroundColor: "#ffffff",
-        borderRadius: "8px",
-        boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
-        mb: 2,
-        width:"88vw"
-      }}
-    >
-      <Box sx={{ padding: "16px" }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Typography component="div" variant="h5" sx={{ fontWeight: "bold" }}>
-              Requests List
-            </Typography>
-            <Chip
-              label={`${filteredRequests.length} Requests`}
-              sx={{ backgroundColor: "#e3f2fd", color: "#2196f3" }}
-            />
+    <Box sx={{ 
+      backgroundColor: 'white',
+      borderRadius: '8px',
+      boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.1)',
+      padding: '24px',
+      margin: '24px',
+      width:'72vw',
+    }}>
+      {currentView === 'schedules' ? (
+        <>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              <Typography variant="h5" component="div">
+                Schedules List
+              </Typography>
+              <Chip
+                label={`${schedules.length} Schedules`}
+                sx={{ backgroundColor: "#e3f2fd", color: "#1976d2" }}
+              />
+            </Box>
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <Button
+                variant="contained"
+                onClick={() => setOpenTemplateDialog(true)}
+                sx={{
+                  backgroundColor: "darkgreen",
+                  color: "white",
+                  textTransform: "none",
+                  fontSize: "1rem",
+                  padding: "6px 20px",
+                  borderRadius: 1,
+                  "&:hover": {
+                    backgroundColor: "#1b5e20",
+                  },
+                }}
+              >
+                +New Schedule
+              </Button>
+            </Box>
           </Box>
+          <SelectTemplate 
+            open={openTemplateDialog} 
+            handleClose={() => setOpenTemplateDialog(false)}
+          />
 
-          <Box sx={{ display: "flex", gap: 2 }}>
-            <Button
-              variant="contained"
-              sx={{
-                backgroundColor: "#2e7d32",
-                color: "white",
-                textTransform: "none",
-                "&:hover": {
-                  backgroundColor: "#1b5e20",
-                },
-              }}
-              onClick={handleOpenSlotDialog}
-            >
-              Create Schedule
-            </Button>
-            <Button
-              variant="outlined"
-              sx={{
-                color: "#2e7d32",
-                borderColor: "#2e7d32",
-                textTransform: "none",
-                "&:hover": {
-                  borderColor: "#1b5e20",
-                },
-              }}
-            >
-              Cancel
-            </Button>
-          </Box>
-        </Box>
-
-        <Box component="div" sx={{ marginBottom: "16px" }}>
-          <Typography component="div" variant="body1">
+          <Typography variant="body1" sx={{ marginBottom: "50px" }}>
             Keep track of schedules and their dates.
           </Typography>
-        </Box>
 
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-          <Box sx={{ display: "flex", gap: 2 }}>
-            <Chip
-              label="View all"
-              sx={{
-                backgroundColor: "white",
-                color: "grey",
-                border: "1px solid grey",
-                borderRadius: "10px",
-              }}
-            />
-          </Box>
-
-          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-            <TextField
-              size="small"
-              placeholder="Search"
-              value={searchQuery}
-              onChange={handleSearch}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: "gray" }} />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ backgroundColor: "#ffffff", borderRadius: "30px", width: "300px" }}
-            />
-            
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel>Skill</InputLabel>
-              <Select value={skillFilter} onChange={handleSkillFilter} label="Skill">
-                <MenuItem value="all">All Skills</MenuItem>
-                {uniqueSkills.map((skill, index) => (
-                  <MenuItem key={`skill-${index}`} value={skill}>
-                    {skill}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
-        </Box>
-
-        <Box component="div" sx={{ marginBottom: "40px" }}>
-          <Typography component="div" variant="body1" sx={{ fontWeight: "bold" }}>
-            Student Request
-            <Chip
-              label={`${filteredRequests.length}`}
-              sx={{ backgroundColor: "green", color: "white", marginLeft: "8px" }}
-            />
-          </Typography>
-        </Box>
-
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, marginBottom: "16px", width: "100%" }}>
-          <Button
-            variant="outlined"
-            onClick={handlePrevious}
-            disabled={showInitialSlots}
-          >
-            &lt;
-          </Button>
-          <Box sx={{ display: "flex", gap: 2, flexGrow: 1, justifyContent: "space-between" }}>
-            {(showInitialSlots ? initialSlots : nextSlots).map((time, index) => (
-              <Chip
-                key={`time-${index}`}
-                label={time}
+          <Grid container spacing={2} sx={{ marginBottom: "20px" }}>
+            <Grid item xs={4} sx={{ display: "flex", gap: "10px" }}>
+              <Button
+                variant="contained"
+                onClick={handleViewAllSchedules}
                 sx={{
-                  backgroundColor: "white",
-                  color: "grey",
-                  border: "1px solid grey",
-                  borderRadius: "16px",
-                  flexGrow: 1,
+                  backgroundColor: "#f8f8f8",
+                  color: "black",
+                  textTransform: "none",
+                  fontSize: "1rem",
+                  padding: "10px 20px",
+                  "&:hover": {
+                    backgroundColor: "#e0e0e0",
+                  },
+                }}
+              >
+                View All
+              </Button>
+              {hasStudentRequestPermission && (
+                <Button
+                  variant="outlined"
+                  onClick={navigateToRequests}
+                  sx={{
+                    color: "#2e7d32",
+                    borderColor: "#2e7d32",
+                    textTransform: "none",
+                    "&:hover": {
+                      borderColor: "#1b5e20",
+                    },
+                  }}
+                >
+                  Student Requests
+                </Button>
+              )}
+            </Grid>
+
+            <Grid item xs={8} sx={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <TextField
+                fullWidth
+                variant="outlined"
+                placeholder="Search schedules..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                sx={{ maxWidth: "600px" }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search />
+                    </InputAdornment>
+                  ),
                 }}
               />
-            ))}
-          </Box>
-          <Button
-            variant="outlined"
-            onClick={handleNext}
-            disabled={!showInitialSlots}
+              <FormControl sx={{ minWidth: 150 }}>
+                <InputLabel>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <FilterList fontSize="small" />
+                    Filter
+                  </Box>
+                </InputLabel>
+                <Select
+                  value={filterPriority}
+                  onChange={(e) => setFilterPriority(e.target.value)}
+                  label="Filter"
+                >
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="High">High</MenuItem>
+                  <MenuItem value="Medium">Medium</MenuItem>
+                  <MenuItem value="Low">Low</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+
+          <Table sx={{ width: "100%", marginTop: "20px" }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell>Priority</TableCell>
+                <TableCell>Date</TableCell>
+                <TableCell>Venue</TableCell>
+                <TableCell>Responsible Person</TableCell>
+                <TableCell>Status</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {paginatedSchedules.map((schedule) => (
+                <TableRow key={schedule.id}>
+                  <TableCell>{schedule.name}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={schedule.priority}
+                      sx={{
+                        ...getPriorityStyles(schedule.priority),
+                        borderRadius: "12px",
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell>{schedule.date}</TableCell>
+                  <TableCell>{schedule.venue}</TableCell>
+                  <TableCell>{schedule.responsiblePerson}</TableCell>
+                  <TableCell>{schedule.status}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginTop: "20px",
+              padding: "10px",
+              borderTop: "1px solid #e0e0e0",
+            }}
           >
-            &gt;
-          </Button>
-        </Box>
+            <Typography variant="body2" sx={{ color: "grey" }}>
+              Page {currentPage} of {totalPagesSchedules}
+            </Typography>
 
-        {/* Slot Creation Dialog */}
-        // In FacultyFiles component
-<Dialog
-  open={openSlotDialog}
-  onClose={handleCloseSlotDialog}
-  maxWidth="md"
-  fullWidth
->
-  <SlotCreation 
-    onClose={handleCloseSlotDialog} 
-    selectedStudents={selectedEmails} 
-  />
-</Dialog>
-
-        {hasPermission ? (
-          <>
-            {error && (
-              <Typography variant="body1" color="error" sx={{ marginBottom: "20px" }}>
-                {error}
-              </Typography>
-            )}
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell padding="checkbox">
-                      <GreenCheckbox
-                        indeterminate={
-                          selectedRequests.length > 0 && 
-                          selectedRequests.length < currentRows.length
-                        }
-                        checked={
-                          currentRows.length > 0 && 
-                          selectedRequests.length === currentRows.length
-                        }
-                        onChange={handleSelectAll}
-                        icon={<CheckCircleIcon />}
-                        checkedIcon={<CheckCircleIcon />}
-                      />
-                    </TableCell>
-                    <TableCell>User ID</TableCell>
-                    <TableCell>User Email</TableCell>
-                    <TableCell>Department</TableCell>
-                    <TableCell>Contact No</TableCell>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Request For</TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {currentRows.length > 0 ? (
-                    currentRows.map((request) => (
-                      <TableRow key={request._id}>
-                        <TableCell padding="checkbox">
-                          <GreenCheckbox
-                            checked={selectedRequests.includes(request._id)}
-                            onChange={() => handleSelectRequest(request._id, request.email)}
-                            icon={<CheckCircleIcon />}
-                            checkedIcon={<CheckCircleIcon />}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {request.name}
-                          <Typography variant="body2" color="textSecondary">
-                            {request.register_id}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>{request.email}</TableCell>
-                        <TableCell>{request.department}</TableCell>
-                        <TableCell>{request.mobile_number}</TableCell>
-                        <TableCell>
-                          {new Date(request.created_at).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
-                        </TableCell>
-                        <TableCell>
-                          {(() => {
-                            try {
-                              return JSON.parse(request.skills).join(", ");
-                            } catch (error) {
-                              console.error("Error parsing skills:", error);
-                              return "N/A";
-                            }
-                          })()}
-                        </TableCell>
-                        <TableCell>
-                          <MoreVertIcon sx={{ color: "blue" }} />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={8} align="center">
-                        No requests found.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "16px" }}>
-              <Typography variant="body1">
-                Page {currentPage} of {totalPages}
-              </Typography>
-              <Box sx={{ display: "flex", gap: 2 }}>
-                <Button
-                  variant="outlined"
-                  onClick={handlePreviousPage}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outlined"
-                  onClick={handleNextPage}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </Button>
-              </Box>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                backgroundColor: "white",
+                borderRadius: "8px",
+                padding: "8px 16px",
+                boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+              }}
+            >
+              <Button
+                onClick={handlePreviousPageSchedules}
+                disabled={currentPage === 1}
+                sx={{
+                  color: "grey",
+                  textTransform: "none",
+                  minWidth: "auto",
+                  "&:disabled": {
+                    color: "#e0e0e0",
+                  },
+                }}
+              >
+                Previous
+              </Button>
+              <Button
+                onClick={handleNextPageSchedules}
+                disabled={currentPage === totalPagesSchedules}
+                sx={{
+                  color: "grey",
+                  textTransform: "none",
+                  minWidth: "auto",
+                  "&:disabled": {
+                    color: "#e0e0e0",
+                  },
+                }}
+              >
+                Next
+              </Button>
             </Box>
-          </>
-        ) : (
-          <Typography variant="body1">
-            You do not have permission to view student requests.
-          </Typography>
-        )}
-      </Box>
+          </Box>
+        </>
+      ) : (
+        <FacultyRequests
+          navigateToSchedules={navigateToSchedules}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+        />
+      )}
     </Box>
   );
 };
 
-export default FacultyFiles;
+export default FacultySchedules;

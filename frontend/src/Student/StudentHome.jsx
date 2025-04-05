@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -14,103 +14,292 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  CircularProgress,
+  Snackbar,
+  Alert
 } from "@mui/material";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import SearchIcon from "@mui/icons-material/Search";
 import TimelineIcon from "@mui/icons-material/Timeline";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import { DatePicker } from "@mui/x-date-pickers";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import CloseIcon from '@mui/icons-material/Close';
 import RequestSchedule from "./request_schedule";
+import axios from "axios";
 
-// Reusable EventChip Component
+// Enhanced EventChip Component with Popover
 function EventChip({ event }) {
+  const [anchorEl, setAnchorEl] = useState(null);
+
+  const handleClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const open = Boolean(anchorEl);
+  const id = open ? 'event-popover' : undefined;
+
+  return (
+    <>
+      <Box
+        onClick={handleClick}
+        sx={{
+          backgroundColor: event.color,
+          borderRadius: "4px",
+          padding: "4px",
+          fontSize: "12px",
+          color: "#fff",
+          fontWeight: "bold",
+          textAlign: "center",
+          cursor: "pointer",
+          '&:hover': {
+            opacity: 0.9
+          }
+        }}
+      >
+        {event.title}
+      </Box>
+
+      <Popover
+        id={id}
+        open={open}
+        anchorEl={anchorEl}
+        onClose={handleClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+      >
+        {event.slotData && (
+          <Box sx={{ p: 2, maxWidth: 300 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>{event.title}</Typography>
+            <Typography variant="body2">Faculty: {event.slotData.faculty}</Typography>
+            <Typography variant="body2">
+              Time: {new Date(event.slotData.start).toLocaleTimeString()} - {new Date(event.slotData.end).toLocaleTimeString()}
+            </Typography>
+            <Typography variant="body2">
+              Date: {new Date(event.slotData.start).toLocaleDateString()}
+            </Typography>
+            <Typography variant="body2">Location: {event.slotData.location}</Typography>
+            {event.slotData.requestDetails && (
+              <>
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  Student: {event.slotData.requestDetails.student_name}
+                </Typography>
+                {event.slotData.requestDetails.roll_number && (
+                  <Typography variant="body2">Roll: {event.slotData.requestDetails.roll_number}</Typography>
+                )}
+                {event.slotData.requestDetails.department && (
+                  <Typography variant="body2">Dept: {event.slotData.requestDetails.department}</Typography>
+                )}
+              </>
+            )}
+          </Box>
+        )}
+      </Popover>
+    </>
+  );
+}
+
+// TimelineView Component with Booked Slots
+// TimelineView Component with Booked Slots
+function TimelineView({ timeRange, date, bookedSlots, loadingSlots }) {
+  // Ensure `date` is a valid Date object
+  const selectedDate = date instanceof Date ? date : new Date(date);
+
+  // Parse the time range
+  const [startHour, endHour] = timeRange.split("-").map(Number);
+
+  // Generate time slots for the selected range
+  const timeSlots = [];
+  for (let hour = startHour; hour <= endHour; hour++) {
+    timeSlots.push(`${hour}:00`);
+    if (hour !== endHour) {
+      timeSlots.push(`${hour}:30`);
+    }
+  }
+
+  // Filter events for the selected date and time range
+  const dayEvents = bookedSlots.filter((slot) => {
+    const slotDate = new Date(slot.start).toDateString();
+    const slotHour = new Date(slot.start).getHours();
+    return (
+      slotDate === selectedDate.toDateString() &&
+      slotHour >= startHour &&
+      slotHour < endHour
+    );
+  });
+
+  // Convert events to timeline format with actual start/end times
+  const timelineEvents = dayEvents.map((event) => {
+    const startDate = new Date(event.start);
+    const endDate = new Date(event.end);
+    const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
+    const endMinutes = endDate.getHours() * 60 + endDate.getMinutes();
+
+    return {
+      startTime: startMinutes,
+      endTime: endMinutes,
+      title: event.title,
+      duration: (endMinutes - startMinutes) / 60, // Duration in hours
+      color: event.color || "#4CAF50",
+      slotData: event,
+    };
+  });
+
+  // Calculate total minutes in the time range for positioning
+  const totalMinutes = (endHour - startHour) * 60;
+
   return (
     <Box
       sx={{
-        backgroundColor: event.color,
-        borderRadius: "4px",
-        padding: "4px",
-        fontSize: "12px",
-        color: "#fff",
-        fontWeight: "bold",
-        textAlign: "center",
+        backgroundColor: "#ffffff",
+        borderRadius: "8px",
+        boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+        padding: "16px",
+        marginTop: "5px",
       }}
     >
-      {event.title}
-    </Box>
-  );
-}
-
-// TimelineView Component
-function TimelineView({ timeRange, date }) {
-  const timeRanges = {
-    "1-8": ["1:00", "2:00", "3:00", "4:00", "5:00", "6:00", "7:00", "8:00"],
-    "9-16": ["9:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"],
-    "17-24": ["17:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:00", "24:00"],
-  };
-  const [openRequestSchedule, setOpenRequestSchedule] = useState(false);
-  const times = timeRanges[timeRange] || [];
-  const events = [
-    { time: "2:00", title: "Lecture", duration: "1 hr", color: "#d8bfd8", borderColor: "#800080" },
-    { time: "10:00", title: "Meeting", duration: "2 hr", color: "#add8e6", borderColor: "#00008b" },
-    { time: "18:00", title: "Workshop", duration: "1.5 hr", color: "#90ee90", borderColor: "#006400" },
-  ];
-
-  return (
-    <Box sx={{ backgroundColor: "#ffffff", borderRadius: "8px", boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)", padding: "16px", marginTop: "5px" }}>
       <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
-        {date.toLocaleDateString("en-US", { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+        {selectedDate.toLocaleDateString("en-US", {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })}
       </Typography>
-      
-      <Box sx={{ 
-        display: "grid", 
-        gridTemplateColumns: `repeat(${times.length}, 1fr)`, 
-        backgroundColor: "#ffffff",
-      }}>
-        {times.map((time, index) => (
-          <Box key={time} sx={{
-            textAlign: "center",
-            padding: "8px",
-            borderRight: index !== times.length - 1 ? "1px solid #ddd" : "none",
-            backgroundColor: "#f0f0f0"
-          }}>
-            <Typography variant="body2" sx={{ fontWeight: "bold", fontSize: "12px" }}>{time}</Typography>
-          </Box>
-        ))}
-      </Box>
 
-      <Box sx={{ 
-        display: "grid", 
-        gridTemplateColumns: `repeat(${times.length}, 1fr)`,
-      }}>
-        {times.map((time, index) => (
-          <Box key={time} sx={{
-            textAlign: "left",
-            padding: "8px",
-            borderRight: index !== times.length - 1 ? "1px solid #ddd" : "none",
-            position: "relative",
-            minHeight: "400px",
-          }}>
-            {events.filter(event => event.time === time).map((event, idx) => (
-              <EventChip key={idx} event={event} />
+      {loadingSlots ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          {/* Time slot headers */}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: `repeat(${timeSlots.length}, 1fr)`,
+              backgroundColor: "#ffffff",
+            }}
+          >
+            {timeSlots.map((time, index) => (
+              <Box
+                key={time}
+                sx={{
+                  textAlign: "center",
+                  padding: "4px",
+                  borderRight:
+                    index !== timeSlots.length - 1 ? "1px solid #ddd" : "none",
+                  backgroundColor: "#f0f0f0",
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: "bold", fontSize: "10px" }}>
+                  {time}
+                </Typography>
+              </Box>
             ))}
           </Box>
-        ))}
-      </Box>
+
+          {/* Timeline content */}
+          <Box
+            sx={{
+              position: "relative",
+              height: "60px",
+              border: "1px solid #ddd",
+              backgroundColor: "#f9f9f9",
+              mt: 1,
+            }}
+          >
+            {/* Time markers */}
+            {timeSlots.map((time, index) => (
+              <Box
+                key={`marker-${time}`}
+                sx={{
+                  position: "absolute",
+                  left: `${(index / timeSlots.length) * 100}%`,
+                  height: "100%",
+                  borderLeft: index > 0 ? "1px dashed #ccc" : "none",
+                  width: "1px",
+                }}
+              />
+            ))}
+
+            {/* Events */}
+            {timelineEvents.map((event, index) => {
+              const startPos = ((event.startTime - startHour * 60) / totalMinutes) * 100;
+              let width = ((event.endTime - event.startTime) / totalMinutes) * 100;
+              width = width > 0 ? width : 2; // Ensure a minimum width to make events visible
+
+              return (
+                <Box
+                  key={index}
+                  sx={{
+                    position: "absolute",
+                    top: "10px",
+                    left: `${startPos}%`,
+                    width: `${width}%`,
+                    backgroundColor: event.color,
+                    borderRadius: "4px",
+                    padding: "4px",
+                    color: "#fff",
+                    fontWeight: "bold",
+                    fontSize: "12px",
+                    textAlign: "center",
+                    cursor: "pointer",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    "&:hover": {
+                      opacity: 0.9,
+                    },
+                  }}
+                  title={`${event.slotData.title} (${new Date(event.slotData.start).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })} - ${new Date(event.slotData.end).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })})`}
+                >
+                  {event.slotData.title}
+                </Box>
+              );
+            })}
+          </Box>
+
+          {!loadingSlots && timelineEvents.length === 0 && (
+            <Box
+              sx={{
+                textAlign: "center",
+                py: 4,
+                color: "text.secondary",
+              }}
+            >
+              <Typography>No booked slots for this time period</Typography>
+            </Box>
+          )}
+        </>
+      )}
     </Box>
   );
 }
 
-// CalendarView Component
-function CalendarView({ calendarView, dateRange }) {
-  const events = [
-    { date: "2023-11-11", title: "Meeting", color: "#ff69b4" },
-    { date: "2023-12-14", title: "Annual Day", color: "#87ceeb" },
-    { date: "2024-01-16", title: "Workshop", color: "#90ee90" },
-  ];
+// CalendarView Component with Booked Slots
+function CalendarView({ calendarView, dateRange, bookedSlots, loadingSlots }) {
+  // Process booked slots into calendar events
+  const calendarEvents = bookedSlots.map(slot => ({
+    date: new Date(slot.start).toISOString().split('T')[0],
+    title: slot.title,
+    color: slot.color || '#4CAF50',
+    slotData: slot
+  }));
 
   if (calendarView === "month") {
     const months = [];
@@ -128,88 +317,95 @@ function CalendarView({ calendarView, dateRange }) {
 
     return (
       <Box sx={{ backgroundColor: "#ffffff", borderRadius: "8px", boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)", padding: "16px", marginTop: "5px" }}>
-        <Box sx={{ 
-          display: "grid", 
-          gridTemplateColumns: `repeat(${months.length + 1}, 1fr)`, 
-          gap: "0px",
-        }}>
-          <Box sx={{ 
-            fontWeight: "bold", 
-            textAlign: "center", 
-            padding: "8px", 
-            backgroundColor: "#f0f0f0",
-            borderRight: "1px solid #ddd",
-            borderBottom: "1px solid #ddd"
-          }}>
-            Date
+        {loadingSlots ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress />
           </Box>
-          {months.map((month, index) => (
-            <Box 
-              key={month.toISOString()}
-              sx={{ 
-                fontWeight: "bold", 
-                textAlign: "center", 
-                padding: "8px", 
-                backgroundColor: "#f0f0f0",
-                borderRight: index !== months.length - 1 ? "1px solid #ddd" : "none",
-                borderBottom: "1px solid #ddd"
-              }}>
-              {month.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+        ) : (
+          <Box sx={{ 
+            display: "grid", 
+            gridTemplateColumns: `repeat(${months.length + 1}, 1fr)`, 
+            gap: "0px",
+          }}>
+            <Box sx={{ 
+              fontWeight: "bold", 
+              textAlign: "center", 
+              padding: "8px", 
+              backgroundColor: "#f0f0f0",
+              borderRight: "1px solid #ddd",
+              borderBottom: "1px solid #ddd"
+            }}>
+              Date
             </Box>
-          ))}
-
-          {Array.from({ length: maxDays }, (_, index) => {
-            const day = index + 1;
-            return (
-              <React.Fragment key={day}>
-                <Box sx={{ 
+            {months.map((month, index) => (
+              <Box 
+                key={month.toISOString()}
+                sx={{ 
+                  fontWeight: "bold", 
                   textAlign: "center", 
                   padding: "8px", 
-                  backgroundColor: "#f9f9f9",
-                  borderRight: "1px solid #ddd"
+                  backgroundColor: "#f0f0f0",
+                  borderRight: index !== months.length - 1 ? "1px solid #ddd" : "none",
+                  borderBottom: "1px solid #ddd"
                 }}>
-                  <Typography variant="body2" sx={{ fontWeight: "bold" }}>
-                    {day}
-                  </Typography>
-                </Box>
+                {month.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+              </Box>
+            ))}
 
-                {months.map((month, monthIndex) => {
-                  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-                  const formattedDate = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                  const dayEvents = events.filter(event => event.date === formattedDate);
+            {Array.from({ length: maxDays }, (_, index) => {
+              const day = index + 1;
+              return (
+                <React.Fragment key={day}>
+                  <Box sx={{ 
+                    textAlign: "center", 
+                    padding: "8px", 
+                    backgroundColor: "#f9f9f9",
+                    borderRight: "1px solid #ddd"
+                  }}>
+                    <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                      {day}
+                    </Typography>
+                  </Box>
 
-                  return (
-                    <Box
-                      key={`${month.toISOString()}-${day}`}
-                      sx={{
-                        padding: "8px",
-                        backgroundColor: "#ffffff",
-                        minHeight: "40px",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "4px",
-                        borderRight: monthIndex !== months.length - 1 ? "1px solid #ddd" : "none"
-                      }}
-                    >
-                      {day <= daysInMonth ? (
-                        dayEvents.map((event, idx) => (
-                          <EventChip key={idx} event={event} />
-                        ))
-                      ) : (
-                        <Typography variant="body2" sx={{ color: "#ccc" }}>
-                          -
-                        </Typography>
-                      )}
-                    </Box>
-                  );
-                })}
-              </React.Fragment>
-            );
-          })}
-        </Box>
+                  {months.map((month, monthIndex) => {
+                    const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+                    const formattedDate = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const dayEvents = calendarEvents.filter(event => event.date === formattedDate);
+
+                    return (
+                      <Box
+                        key={`${month.toISOString()}-${day}`}
+                        sx={{
+                          padding: "8px",
+                          backgroundColor: "#ffffff",
+                          minHeight: "40px",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "4px",
+                          borderRight: monthIndex !== months.length - 1 ? "1px solid #ddd" : "none"
+                        }}
+                      >
+                        {day <= daysInMonth ? (
+                          dayEvents.map((event, idx) => (
+                            <EventChip key={idx} event={event} />
+                          ))
+                        ) : (
+                          <Typography variant="body2" sx={{ color: "#ccc" }}>
+                            -
+                          </Typography>
+                        )}
+                      </Box>
+                    );
+                  })}
+                </React.Fragment>
+              );
+            })}
+          </Box>
+        )}
       </Box>
     );
   } else {
+    // Week view implementation
     const days = [];
     const currentDate = new Date(dateRange.startDate);
     
@@ -220,60 +416,64 @@ function CalendarView({ calendarView, dateRange }) {
 
     return (
       <Box sx={{ backgroundColor: "#ffffff", borderRadius: "8px", boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)", padding: "16px", marginTop: "5px" }}>
-        <Box sx={{ 
-          display: "grid", 
-          gridTemplateColumns: `repeat(${days.length}, 1fr)`, 
-          gap: "0px",
-        }}>
-          {days.map((day, index) => (
-            <Box 
-              key={day.toISOString()} 
-              sx={{ 
-                fontWeight: "bold", 
-                textAlign: "center", 
-                padding: "8px", 
-                backgroundColor: "#f0f0f0",
-                borderRight: index !== days.length - 1 ? "1px solid #ddd" : "none",
-                borderBottom: "1px solid #ddd"
-              }}>
-              {day.toLocaleDateString("en-US", { weekday: 'short' })}-{day.getDate()}
-            </Box>
-          ))}
-
-          {days.map((day, dayIndex) => {
-            const formattedDate = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-            const dayEvents = events.filter(event => event.date === formattedDate);
-
-            return (
-              <Box
-                key={formattedDate}
-                sx={{
-                  padding: "8px",
-                  backgroundColor: "#ffffff",
-                  minHeight: "100px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "4px",
-                  borderRight: dayIndex !== days.length - 1 ? "1px solid #ddd" : "none"
-                }}
-              >
-                {dayEvents.map((event, idx) => (
-                  <EventChip key={idx} event={event} />
-                ))}
+        {loadingSlots ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <Box sx={{ 
+            display: "grid", 
+            gridTemplateColumns: `repeat(${days.length}, 1fr)`, 
+            gap: "0px",
+          }}>
+            {days.map((day, index) => (
+              <Box 
+                key={day.toISOString()} 
+                sx={{ 
+                  fontWeight: "bold", 
+                  textAlign: "center", 
+                  padding: "8px", 
+                  backgroundColor: "#f0f0f0",
+                  borderRight: index !== days.length - 1 ? "1px solid #ddd" : "none",
+                  borderBottom: "1px solid #ddd"
+                }}>
+                {day.toLocaleDateString("en-US", { weekday: 'short' })}-{day.getDate()}
               </Box>
-            );
-          })}
-        </Box>
+            ))}
+
+            {days.map((day, dayIndex) => {
+              const formattedDate = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+              const dayEvents = calendarEvents.filter(event => event.date === formattedDate);
+
+              return (
+                <Box
+                  key={formattedDate}
+                  sx={{
+                    padding: "8px",
+                    backgroundColor: "#ffffff",
+                    minHeight: "100px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "4px",
+                    borderRight: dayIndex !== days.length - 1 ? "1px solid #ddd" : "none"
+                  }}
+                >
+                  {dayEvents.map((event, idx) => (
+                    <EventChip key={idx} event={event} />
+                  ))}
+                </Box>
+              );
+            })}
+          </Box>
+        )}
       </Box>
     );
   }
 }
 
-
-
 function StudentHome() {
   const [view, setView] = useState("timeline");
-  const [timeRange, setTimeRange] = useState("1-8");
+  const [timeRange, setTimeRange] = useState("8-14");
   const [calendarView, setCalendarView] = useState("month");
   const [openRequestSchedule, setOpenRequestSchedule] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -281,6 +481,41 @@ function StudentHome() {
     startDate: new Date(),
     endDate: new Date(new Date().setMonth(new Date().getMonth() + 2))
   });
+  const [bookedSlots, setBookedSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success"
+  });
+  const loggedInEmail = localStorage.getItem("userEmail");
+
+  // Fetch booked slots when date range or view changes
+  useEffect(() => {
+    const fetchBookedSlots = async () => {
+      if (!loggedInEmail) return;
+      
+      try {
+        setLoadingSlots(true);
+        const response = await axios.get(
+          `http://localhost:8000/api/requests/booked-slots/${loggedInEmail}`
+        );
+        setBookedSlots(response.data);
+      } catch (error) {
+        console.error("Error fetching booked slots:", error);
+        setSnackbar({
+          open: true,
+          message: "Failed to load booked slots",
+          severity: "error"
+        });
+      } finally {
+        setLoadingSlots(false);
+      }
+    };
+
+    fetchBookedSlots();
+  }, [loggedInEmail, dateRange, view, refreshKey]);
 
   const handleChange = (event, newValue) => {
     setView(newValue);
@@ -292,6 +527,7 @@ function StudentHome() {
 
   const handleCloseRequestSchedule = () => {
     setOpenRequestSchedule(false);
+    setRefreshKey(prev => prev + 1); // Refresh data when modal closes
   };
 
   const handleCalendarClick = (event) => {
@@ -318,6 +554,10 @@ function StudentHome() {
 
   const handleApplyDateRange = () => {
     handleCalendarClose();
+  };
+
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1);
   };
 
   return (
@@ -361,14 +601,19 @@ function StudentHome() {
               </Typography>
             </Box>
 
-            <Button
-              variant="contained"
-              size="small"
-              sx={{ fontSize: "12px", backgroundColor: "green", borderRadius: "20px", padding: "6px 16px" }}
-              onClick={handleOpenRequestSchedule}
-            >
-              Request Schedule
-            </Button>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <IconButton onClick={handleRefresh}>
+                <RefreshIcon />
+              </IconButton>
+              <Button
+                variant="contained"
+                size="small"
+                sx={{ fontSize: "12px", backgroundColor: "green", borderRadius: "20px", padding: "6px 16px" }}
+                onClick={handleOpenRequestSchedule}
+              >
+                Request Schedule
+              </Button>
+            </Box>
           </Box>
         </Box>
 
@@ -453,18 +698,18 @@ function StudentHome() {
                 </Select>
               </FormControl>
             ) : (
-              <FormControl variant="outlined" size="small" sx={{ minWidth: "120px", backgroundColor: "#ffffff", borderRadius: "4px" }}>
-                <Select
-                  value={timeRange}
-                  onChange={(e) => setTimeRange(e.target.value)}
-                  displayEmpty
-                  sx={{ fontSize: "12px" }}
-                >
-                  <MenuItem value="1-8" sx={{ fontSize: "12px" }}>1-8</MenuItem>
-                  <MenuItem value="9-16" sx={{ fontSize: "12px" }}>9-16</MenuItem>
-                  <MenuItem value="17-24" sx={{ fontSize: "12px" }}>17-24</MenuItem>
-                </Select>
-              </FormControl>
+              // In StudentHome component, replace the timeRange MenuItems
+<FormControl variant="outlined" size="small" sx={{ minWidth: "120px", backgroundColor: "#ffffff", borderRadius: "4px" }}>
+  <Select
+    value={timeRange}
+    onChange={(e) => setTimeRange(e.target.value)}
+    displayEmpty
+    sx={{ fontSize: "12px" }}
+  >
+    <MenuItem value="8-14" sx={{ fontSize: "12px" }}>8:00 - 14:00</MenuItem>
+    <MenuItem value="15-21" sx={{ fontSize: "12px" }}>15:00 - 21:00</MenuItem>
+  </Select>
+</FormControl>
             )}
 
             <Box sx={{ padding: "6px 12px", backgroundColor: "#ffffff", borderRadius: "4px", border: "1px solid #ccc" }}>
@@ -476,9 +721,19 @@ function StudentHome() {
         {/* Content View */}
         <Box sx={{ marginTop: "16px" }}>
           {view === "timeline" ? (
-            <TimelineView timeRange={timeRange} date={dateRange.startDate} />
+            <TimelineView 
+              timeRange={timeRange} 
+              date={dateRange.startDate} 
+              bookedSlots={bookedSlots}
+              loadingSlots={loadingSlots}
+            />
           ) : (
-            <CalendarView calendarView={calendarView} dateRange={dateRange} />
+            <CalendarView 
+              calendarView={calendarView} 
+              dateRange={dateRange} 
+              bookedSlots={bookedSlots}
+              loadingSlots={loadingSlots}
+            />
           )}
         </Box>
 
@@ -487,6 +742,21 @@ function StudentHome() {
           open={openRequestSchedule}
           handleClose={handleCloseRequestSchedule}
         />
+
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        >
+          <Alert
+            onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </LocalizationProvider>
   );

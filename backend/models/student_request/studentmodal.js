@@ -1,5 +1,5 @@
 // backend/models/studentmodal.js
-const pool = require('../config/db');
+const pool = require('../../config/db');
 
 
 const Student = {

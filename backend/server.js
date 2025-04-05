@@ -17,7 +17,11 @@ const additionalRoutes = require('./routes/user/additionalRoutes');
 const combinedDataRoutes = require('./routes/user/combinedDataRoutes');
 const roleRoutes = require('./routes/role/roleroutes');
 const infraRoutes = require('./routes/infraroutes');
-const studentRoutes = require('./routes/studentRoutes');
+const studentRoutes = require('./routes/student_request/studentRoutes');
+const studentRequestRoutes = require('./routes/student_request/studentRequestRoutes');
+const FacultyRoutes = require('./routes/student_request/facultyRoutes');
+const facultyRoutes = require('./routes/schedules/essentials/add_facultyRoutes');
+const slotRoutes = require('./routes/slotRoutes');
 const app = express();
 
 // ======================
@@ -61,6 +65,12 @@ app.use('/api', combinedDataRoutes);
 app.use(roleRoutes);
 app.use(infraRoutes);
 app.use('/api/students', studentRoutes);
+app.use('/api/requests', studentRequestRoutes);
+app.use('/api/student-requests', studentRequestRoutes);
+// In your main Express app file
+app.use('/', FacultyRoutes);
+app.use('/api/faculties', facultyRoutes); 
+app.use('/api/slots', slotRoutes);
 
 // ======================
 // 4. Error Handling

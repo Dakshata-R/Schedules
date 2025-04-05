@@ -1,5 +1,5 @@
 // backend/controllers/studentController.js
-const Student = require('../models/studentmodal');
+const Student = require('../../models/student_request/studentmodal');
 
 const studentController = {
   getStudentByEmail: async (req, res) => {

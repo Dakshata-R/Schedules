@@ -1,52 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import axios from 'axios';
 import {
   Box, Button, TextField, Typography, Grid, Paper, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions,
   FormControl, InputLabel, Select, MenuItem, Checkbox, List, ListItem, 
-  ListItemText, Alert, CircularProgress
+  ListItemText, Alert, CircularProgress, InputAdornment, IconButton
 } from '@mui/material';
 import { LocalizationProvider, DatePicker, TimePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import axios from 'axios';
+import AddIcon from '@mui/icons-material/Add';
+import Add_Faculty_popup from '../components/schedules_template/Add_Faculty_popup';
 
-const SlotCreation = ({ onClose, selectedStudents = [] }) => {
+const SlotCreation = ({ onClose, selectedStudents = [], students = [], requestId = null, onSuccess }) => {
   const [formData, setFormData] = useState({
     skillName: '',
+    facultyIncharge: '',
     startDate: null,
     endDate: null,
     fromTime: null,
     toTime: null,
     location: '',
     priority: '',
-    studentEmails: []
+    studentEmails: [...selectedStudents]
   });
-  const [students, setStudents] = useState([]);
-  const [openStudentDialog, setOpenStudentDialog] = useState(false);
+
+  const [openFacultyDialog, setOpenFacultyDialog] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [openStudentDialog, setOpenStudentDialog] = useState(false);
 
-  useEffect(() => {
-    // Initialize with pre-selected students if provided
-    if (selectedStudents.length > 0) {
+  const handleFacultySelect = (selectedFaculties) => {
+    if (selectedFaculties.length > 0) {
       setFormData(prev => ({
         ...prev,
-        studentEmails: [...selectedStudents]
+        facultyIncharge: selectedFaculties[0].name
       }));
     }
-
-    const fetchStudents = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/api/students');
-        setStudents(response.data);
-      } catch (error) {
-        console.error('Error fetching students:', error);
-        setError('Failed to load students. Please try again.');
-      }
-    };
-    
-    fetchStudents();
-  }, [selectedStudents]);
+    setOpenFacultyDialog(false);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -75,6 +67,10 @@ const SlotCreation = ({ onClose, selectedStudents = [] }) => {
   const validateForm = () => {
     if (!formData.skillName.trim()) {
       setError('Skill name is required');
+      return false;
+    }
+    if (!formData.facultyIncharge.trim()) {
+      setError('Faculty incharge is required');
       return false;
     }
     if (!formData.startDate) {
@@ -122,38 +118,38 @@ const SlotCreation = ({ onClose, selectedStudents = [] }) => {
     setLoading(true);
     
     try {
-      const loggedInEmail = localStorage.getItem('email');
-      if (!loggedInEmail) {
-        throw new Error('User not authenticated');
+      const formattedData = {
+        skillName: formData.skillName,
+        facultyIncharge: formData.facultyIncharge,
+        startDate: formData.startDate.toISOString().split('T')[0],
+        endDate: formData.endDate.toISOString().split('T')[0],
+        fromTime: formData.fromTime.toLocaleTimeString('en-US', { hour12: false }),
+        toTime: formData.toTime.toLocaleTimeString('en-US', { hour12: false }),
+        location: formData.location,
+        priority: formData.priority,
+        studentEmails: formData.studentEmails
+      };
+
+      if (requestId) {
+        // Approving a request
+        await axios.put(
+          `http://localhost:8000/api/requests/${requestId}/approve`,
+          formattedData
+        );
+        setSuccess('Request approved and slot created!');
+      } else {
+        // Regular slot creation
+        await axios.post('http://localhost:8000/api/slots', formattedData);
+        setSuccess('Slot created successfully!');
       }
 
-      const { skillName, startDate, endDate, fromTime, toTime, location, priority, studentEmails } = formData;
-      
-      // Combine date and time
-      const startDateTime = new Date(startDate);
-      startDateTime.setHours(fromTime.getHours(), fromTime.getMinutes());
-      
-      const endDateTime = new Date(endDate);
-      endDateTime.setHours(toTime.getHours(), toTime.getMinutes());
-      
-      const response = await axios.post('http://localhost:5000/api/schedules', {
-        facultyEmail: loggedInEmail,
-        skillName,
-        startDate: startDateTime,
-        endDate: endDateTime,
-        location,
-        priority,
-        studentEmails: studentEmails
-      });
-      
-      console.log('Schedule created:', response.data);
-      setSuccess(true);
       setTimeout(() => {
         onClose();
+        onSuccess();
       }, 1500);
     } catch (error) {
-      console.error('Error creating schedule:', error);
-      setError(error.response?.data?.message || 'Failed to create schedule. Please try again.');
+      console.error('Error:', error);
+      setError(error.response?.data?.message || 'Failed to process. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -163,7 +159,7 @@ const SlotCreation = ({ onClose, selectedStudents = [] }) => {
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Paper elevation={3} sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
         <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
-          Create New Schedule
+          {requestId ? 'Approve Request and Create Schedule' : 'Create New Schedule'}
         </Typography>
         
         {error && (
@@ -174,7 +170,7 @@ const SlotCreation = ({ onClose, selectedStudents = [] }) => {
         
         {success && (
           <Alert severity="success" sx={{ mb: 2 }}>
-            Schedule created successfully!
+            {success}
           </Alert>
         )}
 
@@ -188,6 +184,35 @@ const SlotCreation = ({ onClose, selectedStudents = [] }) => {
                 value={formData.skillName} 
                 onChange={handleChange} 
                 required 
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField 
+                fullWidth 
+                label="Faculty Incharge" 
+                name="facultyIncharge" 
+                value={formData.facultyIncharge} 
+                onChange={handleChange} 
+                required 
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton 
+                        onClick={() => setOpenFacultyDialog(true)}
+                        sx={{ 
+                          backgroundColor: 'lightgray',
+                          borderRadius: '4px',
+                          '&:hover': {
+                            backgroundColor: 'darkgray'
+                          }
+                        }}
+                      >
+                        <AddIcon />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
             </Grid>
             
@@ -301,7 +326,7 @@ const SlotCreation = ({ onClose, selectedStudents = [] }) => {
                   disabled={loading}
                   startIcon={loading ? <CircularProgress size={20} /> : null}
                 >
-                  {loading ? 'Creating...' : 'Create Schedule'}
+                  {loading ? (requestId ? 'Approving...' : 'Creating...') : (requestId ? 'Approve Request' : 'Create Schedule')}
                 </Button>
               </Box>
             </Grid>
@@ -337,6 +362,12 @@ const SlotCreation = ({ onClose, selectedStudents = [] }) => {
           <Button onClick={() => setOpenStudentDialog(false)}>Done</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Faculty Selection Dialog */}
+      <Add_Faculty_popup 
+        open={openFacultyDialog} 
+        onClose={handleFacultySelect}
+      />
     </LocalizationProvider>
   );
 };

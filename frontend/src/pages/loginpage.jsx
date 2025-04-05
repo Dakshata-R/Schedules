@@ -45,6 +45,7 @@ const LoginPage = () => {
       if (response.data.success) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('role', response.data.role);
+        localStorage.setItem('userEmail', email); 
         navigate(`/${response.data.role}/dashboard`);
       }
     } catch (error) {
@@ -79,6 +80,7 @@ const LoginPage = () => {
       if (response.data.success) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('role', response.data.role);
+        localStorage.setItem('userEmail', email); 
         navigate(`/${response.data.role}/dashboard`);
       }
     } catch (error) {
