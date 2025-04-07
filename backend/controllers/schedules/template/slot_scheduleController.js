@@ -50,3 +50,22 @@ exports.createSlotSchedule = async (req, res) => {
     });
   }
 };
+// Add this new controller method
+exports.getSlotsForStudent = async (req, res) => {
+  try {
+    const { email } = req.params;
+    const slots = await SlotSchedule.getSlotsForStudent(email);
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        slots
+      }
+    });
+  } catch (err) {
+    res.status(400).json({
+      status: 'fail',
+      message: err.message
+    });
+  }
+};

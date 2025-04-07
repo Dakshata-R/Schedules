@@ -58,7 +58,40 @@ const StudentFiles = () => {
   const [selectedSlotDetails, setSelectedSlotDetails] = useState(null);
   const loggedInEmail = localStorage.getItem("userEmail");
   const rowsPerPage = 7;
+// Add this state to StudentFiles.jsx
+const [availableSlots, setAvailableSlots] = useState([]);
 
+// Add this useEffect to fetch slots when component mounts
+useEffect(() => {
+  const fetchAvailableSlots = async () => {
+    try {
+      const response = await axios.get(
+        `http://localhost:8000/api/slot-schedules/for-student/${loggedInEmail}`
+      );
+      setAvailableSlots(response.data.slots || []);
+    } catch (error) {
+      console.error("Error fetching available slots:", error);
+    }
+  };
+  
+  if (loggedInEmail) {
+    fetchAvailableSlots();
+  }
+}, [loggedInEmail, refreshKey]);
+
+// Add this function to format slot data for display
+const formatSlotData = (slot) => {
+  return {
+    id: slot.id,
+    skillName: slot.template_name,
+    facultyIncharge: JSON.parse(slot.faculties).map(f => f.name).join(', '),
+    startDate: formatDate(slot.start_datetime),
+    endDate: formatDate(slot.end_datetime),
+    fromTime: new Date(slot.start_datetime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+    toTime: new Date(slot.end_datetime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+    location: JSON.parse(slot.venues).map(v => v.name).join(', ')
+  };
+};
   useEffect(() => {
     const fetchRequests = async () => {
       console.log('Fetching requests for:', loggedInEmail);
