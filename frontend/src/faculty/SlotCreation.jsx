@@ -112,24 +112,40 @@ const SlotCreation = ({ onClose, selectedStudents = [], students = [], requestId
     e.preventDefault();
     setError(null);
     setSuccess(false);
-
+  
     if (!validateForm()) return;
-
+  
     setLoading(true);
     
     try {
+      // Create dates in local timezone without adjusting for timezone offset
+      const startDate = new Date(formData.startDate);
+      const endDate = new Date(formData.endDate);
+      
+      // Format dates as YYYY-MM-DD without timezone conversion
+      const formattedStartDate = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+      const formattedEndDate = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+  
       const formattedData = {
         skillName: formData.skillName,
         facultyIncharge: formData.facultyIncharge,
-        startDate: formData.startDate.toISOString().split('T')[0],
-        endDate: formData.endDate.toISOString().split('T')[0],
-        fromTime: formData.fromTime.toLocaleTimeString('en-US', { hour12: false }),
-        toTime: formData.toTime.toLocaleTimeString('en-US', { hour12: false }),
+        startDate: formattedStartDate,
+        endDate: formattedEndDate,
+        fromTime: formData.fromTime.toLocaleTimeString('en-US', { 
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        toTime: formData.toTime.toLocaleTimeString('en-US', { 
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
         location: formData.location,
         priority: formData.priority,
         studentEmails: formData.studentEmails
       };
-
+  
       if (requestId) {
         // Approving a request
         await axios.put(
@@ -142,7 +158,7 @@ const SlotCreation = ({ onClose, selectedStudents = [], students = [], requestId
         await axios.post('http://localhost:8000/api/slots', formattedData);
         setSuccess('Slot created successfully!');
       }
-
+  
       setTimeout(() => {
         onClose();
         onSuccess();
@@ -154,7 +170,6 @@ const SlotCreation = ({ onClose, selectedStudents = [], students = [], requestId
       setLoading(false);
     }
   };
-
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Paper elevation={3} sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>

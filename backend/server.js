@@ -4,6 +4,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
+process.env.TZ = 'Asia/Kolkata';
 const errorHandler = require('./middleware/errorHandler');
 
 // Import routes
@@ -22,6 +23,9 @@ const studentRequestRoutes = require('./routes/student_request/studentRequestRou
 const FacultyRoutes = require('./routes/student_request/facultyRoutes');
 const facultyRoutes = require('./routes/schedules/essentials/add_facultyRoutes');
 const slotRoutes = require('./routes/slotRoutes');
+const venueRoutes = require('./routes/schedules/essentials/add_venueRoutes');
+const studentCategoryRoutes = require('./routes/schedules/essentials/student_categoryRoutes');
+const slotScheduleRoutes = require('./routes/schedules/template/slot_scheduleRoutes');
 const app = express();
 
 // ======================
@@ -71,6 +75,9 @@ app.use('/api/student-requests', studentRequestRoutes);
 app.use('/', FacultyRoutes);
 app.use('/api/faculties', facultyRoutes); 
 app.use('/api/slots', slotRoutes);
+app.use('/api/venues', venueRoutes);
+app.use('/api/student-categories', studentCategoryRoutes);
+app.use('/api/slot-schedules', slotScheduleRoutes);
 
 // ======================
 // 4. Error Handling

@@ -11,38 +11,45 @@ import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 
-const Calendar = ({ open, onClose, startDate, dayCount }) => {
-  const [currentMonth, setCurrentMonth] = useState(startDate.getMonth());
-  const [currentYear, setCurrentYear] = useState(startDate.getFullYear());
+const Calendar = ({ open, onClose, selectedDates = [] }) => {
+  // Use the first selected date as the initial month/year if available, otherwise use current date
+  const initialDate = selectedDates.length > 0 ? new Date(selectedDates[0]) : new Date();
+  const [currentMonth, setCurrentMonth] = useState(initialDate.getMonth());
+  const [currentYear, setCurrentYear] = useState(initialDate.getFullYear());
 
-  // Function to check if a date is within the highlighted range
+  // Update the isDateHighlighted function in Calendar.jsx
   const isDateHighlighted = (date) => {
-    const endDate = new Date(startDate.getTime() + dayCount * 24 * 60 * 60 * 1000);
-    return date >= startDate && date < endDate;
+    if (!selectedDates || selectedDates.length === 0) return false;
+    
+    // Get the date in local time (ignoring timezone)
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    
+    return selectedDates.some(selectedDate => {
+      const d = new Date(selectedDate);
+      // Get the selected date in local time (ignoring timezone)
+      const selectedDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return dateStr === selectedDateStr;
+    });
   };
 
   // Function to generate the calendar grid for a given month and year
   const generateCalendar = (year, month) => {
-    const firstDay = new Date(year, month, 1); // First day of the month
-    const lastDay = new Date(year, month + 1, 0); // Last day of the month
-    const startDay = firstDay.getDay(); // Day of the week for the first day (0 = Sunday, 1 = Monday, etc.)
-    const daysInMonth = lastDay.getDate(); // Total days in the month
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDay = firstDay.getDay();
+    const daysInMonth = lastDay.getDate();
 
     const calendar = [];
     let day = 1;
 
-    // Generate the calendar grid
     for (let i = 0; i < 6; i++) {
       const week = [];
       for (let j = 0; j < 7; j++) {
         if (i === 0 && j < startDay) {
-          // Empty cells before the first day of the month
           week.push(<Box key={`empty-${j}`} sx={{ width: "40px", height: "40px" }} />);
         } else if (day > daysInMonth) {
-          // Empty cells after the last day of the month
           week.push(<Box key={`empty-${j}`} sx={{ width: "40px", height: "40px" }} />);
         } else {
-          // Cells with dates
           const currentDate = new Date(year, month, day);
           const isHighlighted = isDateHighlighted(currentDate);
 
@@ -109,10 +116,10 @@ const Calendar = ({ open, onClose, startDate, dayCount }) => {
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: "16px", // More rounded corners
-          width: "400px", // Reduced width
-          height: "500px", // Reduced height
-          overflow: "hidden", // Ensure content fits within the rounded corners
+          borderRadius: "16px",
+          width: "400px",
+          height: "500px",
+          overflow: "hidden",
         },
       }}
     >
@@ -132,19 +139,16 @@ const Calendar = ({ open, onClose, startDate, dayCount }) => {
             mb: 2,
           }}
         >
-          {/* Left Arrow */}
           <IconButton onClick={handlePreviousMonth}>
             <ArrowBackIosIcon />
           </IconButton>
 
-          {/* Current Month */}
           <Typography variant="h6" sx={{ fontWeight: 600, fontSize: "18px" }}>
             {new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(
               new Date(currentYear, currentMonth)
             )}
           </Typography>
 
-          {/* Right Arrow */}
           <IconButton onClick={handleNextMonth}>
             <ArrowForwardIosIcon />
           </IconButton>
@@ -172,7 +176,7 @@ const Calendar = ({ open, onClose, startDate, dayCount }) => {
             borderRadius: "8px",
             cursor: "pointer",
             textAlign: "center",
-            width: "60px", // Reduced width
+            width: "60px",
           }}
           onClick={onClose}
         >

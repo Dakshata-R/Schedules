@@ -1,7 +1,14 @@
 const StudentRequest = require('../../models/student_request/StudentRequest');
 const Slot = require('../../models/Slot');  // Add this line
+const moment = require('moment-timezone');
+
 exports.getRequestsWithSlots = async (req, res) => {
   try {
+    // Disable caching
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    
     const { email } = req.params;
     const requests = await StudentRequest.findByEmail(email);
     
@@ -24,51 +31,54 @@ exports.getRequestsWithSlots = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
 exports.getBookedSlots = async (req, res) => {
   try {
     const { email } = req.params;
-    const slots = await Slot.findBookedByStudent(email);
     
-    // Format the response for calendar display
-    const formattedSlots = slots.map(slot => {
-      try {
-        // Extract date parts from the database values
-        const startDate = new Date(slot.start_date);
-        const endDate = new Date(slot.end_date);
-        
-        // Parse time strings (assuming format is HH:MM:SS or HH:MM)
-        const [fromHours, fromMinutes] = slot.from_time.split(':').map(Number);
-        const [toHours, toMinutes] = slot.to_time.split(':').map(Number);
-        
-        // Apply time to dates
-        startDate.setHours(fromHours, fromMinutes || 0, 0, 0);
-        endDate.setHours(toHours, toMinutes || 0, 0, 0);
+    // Disable caching for this endpoint
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
 
-        return {
-          id: slot.id,
-          title: slot.skill_name,
-          faculty: slot.faculty_incharge,
-          start: startDate.toISOString(),
-          end: endDate.toISOString(),
+    const bookedSlots = await Slot.findBookedByStudent(email);
+    
+    if (!bookedSlots || bookedSlots.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    const formattedSlots = bookedSlots.map(slot => {
+      // Use moment-timezone to handle dates properly
+      const startDateTime = moment.tz(`${slot.startDate} ${slot.fromTime}`, 'YYYY-MM-DD HH:mm:ss', 'Asia/Kolkata').toISOString();
+      const endDateTime = moment.tz(`${slot.endDate} ${slot.toTime}`, 'YYYY-MM-DD HH:mm:ss', 'Asia/Kolkata').toISOString();
+    
+      return {
+        id: slot.id,
+        title: slot.skillName,
+        faculty: slot.facultyIncharge,
+        start: startDateTime,
+        end: endDateTime,
+        location: slot.location,
+        color: '#4CAF50',
+        borderColor: '#2E7D32',
+        extendedProps: {
+          faculty_incharge: slot.facultyIncharge,
+          skill_name: slot.skillName,
           location: slot.location,
-          color: '#4CAF50',
-          borderColor: '#2E7D32',
-          extendedProps: {
-            faculty_incharge: slot.faculty_incharge,
-            skill_name: slot.skill_name,
-            location: slot.location
+          rawData: {
+            startDate: slot.startDate,
+            endDate: slot.endDate,
+            fromTime: slot.fromTime,
+            toTime: slot.toTime
           }
-        };
-      } catch (error) {
-        console.error('Error formatting slot:', error, slot);
-        return null;
-      }
-    }).filter(slot => slot !== null);
+        }
+      };
+    });
 
-    res.json(formattedSlots);
+    res.status(200).json(formattedSlots);
   } catch (error) {
     console.error('Error fetching booked slots:', error);
-    res.status(500).json({ message: 'Failed to fetch booked slots' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 exports.createRequest = async (req, res) => {

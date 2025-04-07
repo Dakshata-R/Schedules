@@ -3,6 +3,8 @@ import SchedulesTable from "./SchedulesTable";
 import SlotTemplate from "../../components/template/SlotTemplate";
 import MeetingTemplate from "../../components/template/MeetingTemplate";
 import SelectTemplate from "../../components/schedules_template/SelectTemplate";
+import FaTemplate from "../../components/template/FaTemplate";
+import SkillTemplate from "../../components/template/SkillTemplate";
 
 import { Box } from "@mui/material"; // Import Box for layout
 
@@ -26,7 +28,6 @@ const SchedulesManager = () => {
 
   return (
     <Box
-      
         sx={{
           width: "70vw",
           backgroundColor: "#fff",
@@ -36,13 +37,16 @@ const SchedulesManager = () => {
          
           marginTop: "30px",
         }}
-    
     >
       {selectedTemplate === "Slot Creation" ? (
         <SlotTemplate onCancel={handleCancel}/>
-      ) :  selectedTemplate === "Meeting" ? (
-        <MeetingTemplate onCancel={handleCancel} />
-       ): (
+      ) : selectedTemplate === "Skill Schedule" ? (
+        <SkillTemplate onCancel={handleCancel}/>
+      ) : selectedTemplate === "Meeting Schedule" ? (
+        <MeetingTemplate onCancel={handleCancel}/>
+      ) : selectedTemplate === "Fa Schedule" ? (
+        <FaTemplate onCancel={handleCancel}/>
+      ) : (
         <>
           <SchedulesTable 
             onNewButtonClick={handleNewButtonClick} 

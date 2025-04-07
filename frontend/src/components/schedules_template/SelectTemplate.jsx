@@ -24,15 +24,13 @@ import InputAdornment from "@mui/material/InputAdornment";
 import slotIcon from "../../assets/slot icon.png";
 import skillIcon from "../../assets/skill icon.png";
 import meetingIcon from "../../assets/meetingicon.jpg";
-import academicIcon from "../../assets/academicschedule.webp";
 import examIcon from "../../assets/examschedule.png";
 
 const templates = [
   { name: "Slot Creation", icon: slotIcon },
   { name: "Skill Schedule", icon: skillIcon },
-  { name: "Meeting", icon: meetingIcon },
-  { name: "Academic Schedule", icon: academicIcon },
-  { name: "Examination schedule" , icon: examIcon},
+  { name: "Meeting Schedule", icon: meetingIcon },
+  { name: "Fa Schedule" , icon: examIcon},
 ];
 
 const SelectTemplate = ({ open, handleClose, onTemplateSelect}) => {
@@ -56,7 +54,7 @@ const SelectTemplate = ({ open, handleClose, onTemplateSelect}) => {
         sx: {
           borderRadius: "8px",
           padding: "5px", // Reduced padding for the entire dialog
-          height: "80vh", // Full height of the viewport
+          height: "70%", 
           overflow: "hidden", // Prevent overflow
         },
       }}

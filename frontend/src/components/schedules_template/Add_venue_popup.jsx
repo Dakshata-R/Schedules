@@ -1,3 +1,4 @@
+import axios from "axios";
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -22,19 +23,53 @@ import SearchIcon from "@mui/icons-material/Search";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import EmptyStateImage from "../../assets/Empty state.png";
 
-const Add_venue_popup = ({ open, onClose, venues }) => {
+const Add_venue_popup = ({ open, onClose }) => {
+  const [venues, setVenues] = useState([]);
   const [selectedVenues, setSelectedVenues] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState("");
   const [page, setPage] = useState(1);
-  const [venueColors, setVenueColors] = useState({}); // Store colors for each venue
-  const itemsPerPage = 5; // Only 5 venues per page
+  const [venueColors, setVenueColors] = useState({});
+  const [loading, setLoading] = useState(false); // Add loading state
+  const [error, setError] = useState(null); // Add error state
+  const itemsPerPage = 5;
 
   // Generate a random color for each venue
   const getRandomColor = () => {
     const colors = ["#FF5733", "#33FF57", "#3357FF", "#FF33A1", "#33FFF5"];
     return colors[Math.floor(Math.random() * colors.length)];
   };
+
+  // Add this useEffect hook to fetch venues when component mounts
+  useEffect(() => {
+    const fetchVenues = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await axios.get('http://localhost:8000/api/venues');
+        setVenues(response.data.map(v => ({
+          id: v.venue_id,
+          name: v.venue_name,
+          capacity: v.capacity,
+          type: v.type || 'Seminar Hall' // Default type if not provided
+        })));
+      } catch (error) {
+        console.error('Error fetching venues:', error);
+        setError('Failed to load venues');
+        // Fallback data
+        setVenues([
+          { id: 1, name: 'Auditorium', capacity: 10, type: 'Seminar Hall' },
+          { id: 2, name: 'Lab C', capacity: 3, type: 'Lab' }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (open) {
+      fetchVenues();
+    }
+  }, [open]);
 
   // Assign random colors to venues when the component mounts or venues change
   useEffect(() => {
@@ -47,8 +82,8 @@ const Add_venue_popup = ({ open, onClose, venues }) => {
 
   // Handle venue selection
   const handleVenueSelection = (venue) => {
-    if (selectedVenues.includes(venue)) {
-      setSelectedVenues(selectedVenues.filter((v) => v !== venue));
+    if (selectedVenues.some(v => v.id === venue.id)) {
+      setSelectedVenues(selectedVenues.filter((v) => v.id !== venue.id));
     } else {
       setSelectedVenues([...selectedVenues, venue]);
     }
@@ -70,7 +105,7 @@ const Add_venue_popup = ({ open, onClose, venues }) => {
   const startIndex = (page - 1) * itemsPerPage;
   const paginatedVenues = filteredVenues.slice(startIndex, startIndex + itemsPerPage);
   const totalPages = Math.ceil(filteredVenues.length / itemsPerPage);
-
+  
   // Generate page numbers (e.g., 1 2 3 ... 10)
   const renderPageNumbers = () => {
     const pages = [];

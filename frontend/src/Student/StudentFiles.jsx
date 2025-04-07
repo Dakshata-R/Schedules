@@ -22,10 +22,18 @@ import {
   DialogContent,
   DialogActions,
   Snackbar,
-  Alert
+  Alert,
+  Avatar,
+  Grid,
+  Divider
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EventIcon from "@mui/icons-material/Event";
+import ScheduleIcon from "@mui/icons-material/Schedule";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
+import PersonIcon from "@mui/icons-material/Person";
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import axios from "axios";
 
 const StudentFiles = () => {
@@ -53,19 +61,16 @@ const StudentFiles = () => {
 
   useEffect(() => {
     const fetchRequests = async () => {
-      if (!loggedInEmail) {
-        console.error("No logged-in email provided.");
-        setLoading(false);
-        return;
-      }
-
+      console.log('Fetching requests for:', loggedInEmail);
       try {
         setLoading(true);
         const response = await axios.get(
-          `http://localhost:8000/api/requests/with-slots/${loggedInEmail}`
+          `http://localhost:8000/api/requests/with-slots/${loggedInEmail}`,
+          { headers: { 'Cache-Control': 'no-cache' } } // Disable client-side caching
         );
-
-        // Process skills to always be an array and ensure status exists
+  
+        console.log('API Response:', response.data);
+        
         const processedRequests = response.data.map(request => ({
           ...request,
           status: request.status || "Pending",
@@ -73,23 +78,18 @@ const StudentFiles = () => {
             ? JSON.parse(request.skills) 
             : Array.isArray(request.skills) ? request.skills : []
         }));
-
+  
+        console.log('Processed Requests:', processedRequests);
         setRequests(processedRequests);
       } catch (error) {
-        console.error("Error fetching requests:", error);
-        setSnackbar({
-          open: true,
-          message: "Failed to fetch requests",
-          severity: "error"
-        });
+        console.error("Error details:", error.response?.data || error.message);
       } finally {
         setLoading(false);
       }
     };
-
+  
     fetchRequests();
   }, [loggedInEmail, refreshKey]);
-
   const handleFilter = (event) => {
     setFilter(event.target.value);
     setPage(1);
@@ -122,11 +122,21 @@ const StudentFiles = () => {
   const handleViewSlot = (requestId) => {
     const request = requests.find(r => r.id === requestId);
     if (request?.slots?.length > 0) {
-      // Find the booked slot (assuming only one slot can be booked per request)
-      const bookedSlot = request.slots.find(slot => slot.isBooked);
+      const bookedSlot = request.slots.find(slot => 
+        slot.status === 'Booked' || slot.isBooked
+      );
       if (bookedSlot) {
-        setSelectedSlotDetails(bookedSlot);
+        setSelectedSlotDetails({
+          ...bookedSlot,
+          skillName: request.skills.join(', ') // Combine skills if multiple
+        });
         setSlotDetailsDialogOpen(true);
+      } else {
+        setSnackbar({
+          open: true,
+          message: "No booked slot found for this request",
+          severity: "info"
+        });
       }
     }
   };
@@ -146,44 +156,63 @@ const StudentFiles = () => {
   const handleBookSlot = (requestId) => {
     const request = requests.find(r => r.id === requestId);
     if (request?.slots?.length > 0) {
-      setSelectedSlots(request.slots);
-      setSlotModalOpen(true);
+      // Filter slots that are available (status Available or isBooked false)
+      const availableSlots = request.slots.filter(slot => 
+        slot.status === 'Available' || !slot.isBooked
+      );
+      
+      if (availableSlots.length > 0) {
+        setSelectedSlots(availableSlots);
+        setSlotModalOpen(true);
+      } else {
+        setSnackbar({
+          open: true,
+          message: "No available slots to book",
+          severity: "info"
+        });
+      }
+    } else {
+      setSnackbar({
+        open: true,
+        message: "No slots available for this request",
+        severity: "info"
+      });
     }
   };
-
   const handleSlotSelect = async (slotId) => {
     try {
       setBookingInProgress(true);
       setSelectedSlotId(slotId);
       
-      const response = await axios.post(`http://localhost:8000/api/slots/${slotId}/book`, {
-        email: loggedInEmail
-      });
-      
-      // Update the requests state to reflect the booked slot
-      setRequests(prevRequests => 
-        prevRequests.map(request => {
-          if (request.slots?.some(slot => slot.id === slotId)) {
-            return {
-              ...request,
-              slots: request.slots.map(slot => 
-                slot.id === slotId ? { ...slot, isBooked: true } : slot
-              ),
-              status: "Approved" // Ensure status is set to Approved after booking
-            };
-          }
-          return request;
-        })
+      // Corrected API endpoint path
+      const response = await axios.post(
+        `http://localhost:8000/api/slots/${slotId}/book`, 
+        { email: loggedInEmail }
       );
-      
-      setSnackbar({
-        open: true,
-        message: "Slot booked successfully!",
-        severity: "success"
-      });
-      
-      setSlotModalOpen(false);
-      setRefreshKey(prev => prev + 1); // Refresh data after booking
+  
+      if (response.data.success) {
+        // Update the state to reflect the booked status
+        setRequests(prevRequests => 
+          prevRequests.map(request => ({
+            ...request,
+            slots: request.slots?.map(slot => 
+              slot.id === slotId 
+                ? { ...slot, status: 'Booked', isBooked: true } 
+                : slot
+            )
+          }))
+        );
+        
+        setSnackbar({
+          open: true,
+          message: "Slot booked successfully!",
+          severity: "success"
+        });
+        setSlotModalOpen(false);
+        setRefreshKey(prev => prev + 1); // Force refresh
+      } else {
+        throw new Error(response.data.message || "Failed to book slot");
+      }
     } catch (error) {
       console.error("Error booking slot:", error);
       setSnackbar({
@@ -196,10 +225,9 @@ const StudentFiles = () => {
       setSelectedSlotId(null);
     }
   };
-
   const handleSlotModalClose = () => {
     setSlotModalOpen(false);
-    setRefreshKey(prev => prev + 1); // Refresh data when modal closes
+    setRefreshKey(prev => prev + 1);
   };
 
   const filteredRequests = requests.filter((request) => {
@@ -235,6 +263,20 @@ const StudentFiles = () => {
     }
   };
 
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  const formatTime = (timeString) => {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
@@ -257,13 +299,13 @@ const StudentFiles = () => {
       >
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Typography variant="h5" sx={{ fontWeight: "bold" }}>My Requests</Typography>
-            <Chip label={`${filteredRequests.length} Requests`} sx={{ backgroundColor: "#e3f2fd", color: "#2196f3" }} />
+            <Typography variant="h5" sx={{ fontWeight: "bold", color: "#3f51b5" }}>My Requests</Typography>
+            <Chip label={`${filteredRequests.length} Requests`} sx={{ backgroundColor: "#e3f2fd", color: "#2196f3", fontWeight: "bold" }} />
           </Box>
         </Box>
 
         <Box sx={{ padding: "0 16px 16px 16px" }}>
-          <Typography variant="body1">View and manage your schedule requests.</Typography>
+          <Typography variant="body1" sx={{ color: "#616161" }}>View and manage your schedule requests.</Typography>
         </Box>
 
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 16px 16px 16px" }}>
@@ -273,6 +315,7 @@ const StudentFiles = () => {
                 value={filter}
                 onChange={handleFilter}
                 displayEmpty
+                sx={{ borderRadius: "20px" }}
               >
                 <MenuItem value="all">All</MenuItem>
                 <MenuItem value="pending">Pending</MenuItem>
@@ -285,24 +328,27 @@ const StudentFiles = () => {
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
             <TextField
               size="small"
-              placeholder="Search"
+              placeholder="Search by name, roll or department"
               value={searchQuery}
               onChange={handleSearch}
-              InputProps={{ startAdornment: <SearchIcon sx={{ color: "gray", mr: 1 }} /> }}
-              sx={{ backgroundColor: "#ffffff", borderRadius: "30px", width: "300px" }}
+              InputProps={{ 
+                startAdornment: <SearchIcon sx={{ color: "gray", mr: 1 }} />,
+                sx: { borderRadius: "20px" }
+              }}
+              sx={{ backgroundColor: "#ffffff", width: "300px" }}
             />
           </Box>
         </Box>
 
-        <TableContainer component={Paper} sx={{ marginBottom: "16px" }}>
+        <TableContainer component={Paper} sx={{ marginBottom: "16px", borderRadius: "8px" }}>
           <Table>
             <TableHead>
-              <TableRow>
-                <TableCell>User Id</TableCell>
-                <TableCell>Department</TableCell>
-                <TableCell>Request for</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Actions</TableCell>
+              <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                <TableCell sx={{ fontWeight: "bold" }}>User Details</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Department</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Requested Skills</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -310,18 +356,32 @@ const StudentFiles = () => {
                 paginatedRequests.map((request) => {
                   const statusColors = getStatusColor(request.status);
                   const hasSlots = request.slots?.length > 0;
-                  const isBooked = request.slots?.some(slot => slot.isBooked);
+                 // Replace all slot status checks with consistent logic
+const isBooked = request.slots?.some(slot => slot.status === 'Booked' || slot.isBooked);
                   const hasBookableSlots = hasSlots && request.slots.some(slot => !slot.isBooked);
 
                   return (
-                    <TableRow key={request.id}>
+                    <TableRow key={request.id} hover>
                       <TableCell>
-                        <Typography variant="body1" sx={{ fontWeight: "bold" }}>{request.student_name}</Typography>
-                        {request.roll_number && (
-                          <Typography variant="body2">Roll: {request.roll_number}</Typography>
-                        )}
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                          <Avatar sx={{ bgcolor: "#3f51b5" }}>
+                            {request.student_name?.charAt(0) || "U"}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body1" sx={{ fontWeight: "bold" }}>{request.student_name}</Typography>
+                            {request.roll_number && (
+                              <Typography variant="body2" sx={{ color: "#616161" }}>Roll: {request.roll_number}</Typography>
+                            )}
+                          </Box>
+                        </Box>
                       </TableCell>
-                      <TableCell>{request.department || 'N/A'}</TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={request.department || 'N/A'} 
+                          size="small" 
+                          sx={{ backgroundColor: "#e0f7fa", color: "#00838f" }} 
+                        />
+                      </TableCell>
                       <TableCell>
                         {request.skills.length > 0 ? (
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
@@ -330,12 +390,12 @@ const StudentFiles = () => {
                                 key={index} 
                                 label={skill} 
                                 size="small" 
-                                sx={{ backgroundColor: '#e3f2fd' }} 
+                                sx={{ backgroundColor: '#e3f2fd', color: "#1e88e5" }} 
                               />
                             ))}
                           </Box>
                         ) : (
-                          'No skills'
+                          <Typography variant="body2" color="textSecondary">No skills</Typography>
                         )}
                       </TableCell>
                       <TableCell>
@@ -354,56 +414,82 @@ const StudentFiles = () => {
                             borderRadius: "50%",
                             backgroundColor: statusColors.dotColor,
                           }} />
-                          <Typography variant="body1" sx={{ color: statusColors.color }}>
+                          <Typography variant="body1" sx={{ color: statusColors.color, fontWeight: "medium" }}>
                             {request.status?.charAt(0).toUpperCase() + request.status?.slice(1)}
                           </Typography>
                         </Box>
                       </TableCell>
-                      <TableCell sx={{ display: 'flex', gap: 1 }}>
-                        <Button 
-                          variant="contained"
-                          sx={{
-                            backgroundColor: request.status === 'Approved' 
-                              ? (isBooked ? '#1b5e20' : (hasBookableSlots ? '#2e7d32' : '#ff9800'))
-                              : request.status === 'Pending'
-                                ? '#ff9800'
-                                : '#e0e0e0',
-                            color: '#ffffff',
-                            textTransform: 'none',
-                            '&:hover': {
-                              backgroundColor: request.status === 'Approved'
-                                ? (isBooked ? '#1b5e20' : (hasBookableSlots ? '#1b5e20' : '#e65100'))
-                                : '#e0e0e0',
-                            },
-                            minWidth: '100px'
-                          }}
-                          onClick={() => isBooked ? handleViewSlot(request.id) : handleBookSlot(request.id)}
-                          disabled={request.status !== 'Approved' || (!isBooked && !hasBookableSlots)}
-                        >
-                          {request.status === 'Approved'
-                            ? (isBooked 
-                                ? 'View Slot' 
-                                : (hasBookableSlots ? 'Book Slot' : 'No Slots'))
-                            : request.status === 'Pending'
-                              ? 'Pending Approval'
-                              : 'Rejected'}
-                        </Button>
-                        <IconButton 
-                          onClick={() => handleDeleteClick(request.id)} 
-                          sx={{ color: "#d32f2f" }}
-                          disabled={request.status !== 'Pending'}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </TableCell>
+<TableCell sx={{ display: 'flex', gap: 1 }}>
+
+<Button 
+  variant="contained"
+  sx={{
+    backgroundColor: request.status === 'Approved'
+      ? request.slots?.some(slot => slot.status === 'Booked' || slot.isBooked)
+        ? '#1b5e20' // Dark green for booked
+        : '#2e7d32' // Green for available
+      : '#e0e0e0', // Gray for pending/rejected
+    color: '#ffffff',
+    textTransform: 'none',
+    borderRadius: '20px',
+    '&:hover': {
+      backgroundColor: request.status === 'Approved'
+        ? request.slots?.some(slot => slot.status === 'Booked' || slot.isBooked)
+          ? '#1b5e20'
+          : '#1b5e20'
+        : '#e0e0e0',
+    },
+    minWidth: '120px',
+    boxShadow: 'none',
+    '&:disabled': {
+      backgroundColor: '#e0e0e0',
+      color: '#9e9e9e'
+    }
+  }}
+  onClick={() => {
+    const bookedSlot = request.slots?.find(slot => 
+      slot.status === 'Booked' || slot.isBooked
+    );
+    if (bookedSlot) {
+      handleViewSlot(request.id);
+    } else {
+      handleBookSlot(request.id);
+    }
+  }}
+  disabled={request.status !== 'Approved'}
+  startIcon={request.slots?.some(slot => 
+    slot.status === 'Booked' || slot.isBooked
+  ) ? <EventIcon /> : null}
+>
+  {request.status === 'Approved'
+    ? request.slots?.some(slot => 
+        slot.status === 'Booked' || slot.isBooked
+      )
+      ? 'View Slot'
+      : 'Book Slot'
+    : 'Pending Approval'}
+</Button>
+  <IconButton 
+    onClick={() => handleDeleteClick(request.id)} 
+    sx={{ 
+      color: "#d32f2f",
+      '&:hover': {
+        backgroundColor: 'rgba(211, 47, 47, 0.08)'
+      }
+    }}
+    disabled={request.status !== 'Pending'}
+  >
+    <DeleteIcon />
+  </IconButton>
+</TableCell>
                     </TableRow>
                   );
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
+                  <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
                     <Typography variant="body1" color="textSecondary">
-                      No requests found
+                      No requests found matching your criteria
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -419,14 +505,15 @@ const StudentFiles = () => {
             alignItems: "center",
             padding: "16px",
           }}>
-            <Typography variant="body1">
-              Page {page} of {totalPages}
+            <Typography variant="body1" sx={{ color: "#616161" }}>
+              Showing {paginatedRequests.length} of {filteredRequests.length} requests (Page {page} of {totalPages})
             </Typography>
             <Box sx={{ display: "flex", gap: 2 }}>
               <Button
                 variant="outlined"
                 disabled={page === 1}
                 onClick={() => handlePageChange(page - 1)}
+                sx={{ borderRadius: '20px', textTransform: 'none' }}
               >
                 Previous
               </Button>
@@ -434,6 +521,7 @@ const StudentFiles = () => {
                 variant="outlined"
                 disabled={page === totalPages || totalPages === 0}
                 onClick={() => handlePageChange(page + 1)}
+                sx={{ borderRadius: '20px', textTransform: 'none' }}
               >
                 Next
               </Button>
@@ -446,70 +534,38 @@ const StudentFiles = () => {
       <Dialog
         open={deleteConfirmOpen}
         onClose={() => setDeleteConfirmOpen(false)}
+        PaperProps={{ sx: { borderRadius: '12px' } }}
       >
-        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 'bold', color: '#d32f2f' }}>Confirm Delete</DialogTitle>
         <DialogContent>
-          <Typography>Are you sure you want to delete this request?</Typography>
+          <Typography>Are you sure you want to delete this request? This action cannot be undone.</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={() => setDeleteConfirmOpen(false)} 
+            sx={{ textTransform: 'none', borderRadius: '20px' }}
+          >
+            Cancel
+          </Button>
           <Button 
             onClick={handleConfirmDelete} 
             color="error"
             variant="contained"
+            sx={{ textTransform: 'none', borderRadius: '20px' }}
           >
             Delete
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Slot Details Dialog */}
-      <Dialog 
-        open={slotDetailsDialogOpen} 
-        onClose={() => setSlotDetailsDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>Booked Slot Details</DialogTitle>
-        <DialogContent>
-          {selectedSlotDetails && (
-            <Box sx={{ mt: 2 }}>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Skill</TableCell>
-                      <TableCell>{selectedSlotDetails.skill_name}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Faculty</TableCell>
-                      <TableCell>{selectedSlotDetails.faculty_incharge}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Date Range</TableCell>
-                      <TableCell>{selectedSlotDetails.start_date} to {selectedSlotDetails.end_date}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Time</TableCell>
-                      <TableCell>{selectedSlotDetails.from_time} - {selectedSlotDetails.to_time}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Location</TableCell>
-                      <TableCell>{selectedSlotDetails.location}</TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSlotDetailsDialogOpen(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-
       {/* Slot Selection Dialog */}
-      <Dialog open={slotModalOpen} onClose={handleSlotModalClose} maxWidth="md" fullWidth>
+      <Dialog 
+        open={slotModalOpen} 
+        onClose={handleSlotModalClose} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{ sx: { borderRadius: '12px' } }}
+      >
         <DialogTitle>Available Slots</DialogTitle>
         <DialogContent>
           {selectedSlots.length > 0 ? (
@@ -527,29 +583,37 @@ const StudentFiles = () => {
                 </TableHead>
                 <TableBody>
                   {selectedSlots.map((slot) => (
-                    <TableRow key={slot.id}>
-                      <TableCell>{slot.skill_name}</TableCell>
-                      <TableCell>{slot.faculty_incharge}</TableCell>
-                      <TableCell>{slot.start_date} to {slot.end_date}</TableCell>
-                      <TableCell>{slot.from_time} - {slot.to_time}</TableCell>
-                      <TableCell>{slot.location}</TableCell>
-                      <TableCell>
-                        <Button 
-                          variant="contained" 
-                          color="primary"
-                          onClick={() => handleSlotSelect(slot.id)}
-                          disabled={slot.isBooked || (bookingInProgress && selectedSlotId === slot.id)}
-                          startIcon={
-                            bookingInProgress && selectedSlotId === slot.id ? 
-                              <CircularProgress size={20} /> : 
-                              null
-                          }
-                        >
-                          {slot.isBooked ? 'Booked' : 
-                           (bookingInProgress && selectedSlotId === slot.id ? 'Booking...' : 'Book This Slot')}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                   <TableRow key={slot.id}>
+                   <TableCell>{slot.skillName}</TableCell>
+                   <TableCell>{slot.facultyIncharge}</TableCell>
+                   <TableCell>{slot.startDate} to {slot.endDate}</TableCell>
+                   <TableCell>{formatTime(slot.fromTime)} - {formatTime(slot.toTime)}</TableCell>
+                   <TableCell>{slot.location}</TableCell>
+                   <TableCell>
+                   <Button 
+  variant="contained" 
+  color="primary"
+  onClick={() => handleSlotSelect(slot.id)}
+  disabled={slot.status === 'Booked' || (bookingInProgress && selectedSlotId === slot.id)}
+  startIcon={
+    bookingInProgress && selectedSlotId === slot.id ? 
+      <CircularProgress size={20} /> : 
+      null
+  }
+  sx={{
+    textTransform: 'none',
+    borderRadius: '20px',
+    '&:disabled': {
+      backgroundColor: '#e0e0e0',
+      color: '#9e9e9e'
+    }
+  }}
+>
+  {slot.status === 'Booked' ? 'Booked' : 
+   (bookingInProgress && selectedSlotId === slot.id ? 'Booking...' : 'Book This Slot')}
+</Button>
+                   </TableCell>
+                 </TableRow>
                   ))}
                 </TableBody>
               </Table>
@@ -563,16 +627,218 @@ const StudentFiles = () => {
         </DialogActions>
       </Dialog>
 
+    {/* Booked Slot Details Dialog */}
+<Dialog
+  open={slotDetailsDialogOpen}
+  onClose={() => setSlotDetailsDialogOpen(false)}
+  maxWidth="sm"
+  fullWidth
+  PaperProps={{
+    sx: {
+      borderRadius: '16px',
+      background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)',
+      boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.15)',
+      overflow: 'hidden'
+    }
+  }}
+>
+  {selectedSlotDetails && (
+    <>
+      <DialogTitle sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        backgroundColor: '#2e7d32',
+        color: 'white',
+        padding: '20px 24px',
+        background: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)'
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+          <CheckCircleIcon sx={{ 
+            mr: 2, 
+            fontSize: '2.5rem',
+            color: '#a5d6a7'
+          }} />
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+              Your Booked Session
+            </Typography>
+            <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
+              {selectedSlotDetails.skillName} Training
+            </Typography>
+          </Box>
+        </Box>
+      </DialogTitle>
+      <DialogContent sx={{ padding: 0 }}>
+        <Box sx={{ 
+          padding: '24px',
+          background: 'white',
+          margin: '16px',
+          borderRadius: '12px',
+          boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.05)'
+        }}>
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                mb: 3,
+                padding: '12px',
+                backgroundColor: '#f5f5f5',
+                borderRadius: '8px'
+              }}>
+                <PersonIcon sx={{ 
+                  mr: 2, 
+                  color: '#2e7d32',
+                  fontSize: '2rem'
+                }} />
+                <Box>
+                  <Typography variant="subtitle2" color="textSecondary">
+                    Faculty Incharge
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {selectedSlotDetails.facultyIncharge}
+                  </Typography>
+                </Box>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                mb: 3,
+                padding: '12px',
+                backgroundColor: '#f5f5f5',
+                borderRadius: '8px'
+              }}>
+                <EventIcon sx={{ 
+                  mr: 2, 
+                  color: '#2e7d32',
+                  fontSize: '2rem'
+                }} />
+                <Box>
+                  <Typography variant="subtitle2" color="textSecondary">
+                    Date
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {formatDate(selectedSlotDetails.startDate)} - {formatDate(selectedSlotDetails.endDate)}
+                  </Typography>
+                </Box>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                mb: 3,
+                padding: '12px',
+                backgroundColor: '#f5f5f5',
+                borderRadius: '8px'
+              }}>
+                <ScheduleIcon sx={{ 
+                  mr: 2, 
+                  color: '#2e7d32',
+                  fontSize: '2rem'
+                }} />
+                <Box>
+                  <Typography variant="subtitle2" color="textSecondary">
+                    Time
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {formatTime(selectedSlotDetails.fromTime)} - {formatTime(selectedSlotDetails.toTime)}
+                  </Typography>
+                </Box>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                mb: 3,
+                padding: '12px',
+                backgroundColor: '#f5f5f5',
+                borderRadius: '8px'
+              }}>
+                <LocationOnIcon sx={{ 
+                  mr: 2, 
+                  color: '#2e7d32',
+                  fontSize: '2rem'
+                }} />
+                <Box>
+                  <Typography variant="subtitle2" color="textSecondary">
+                    Location
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {selectedSlotDetails.location}
+                  </Typography>
+                </Box>
+              </Box>
+            </Grid>
+            
+            <Grid item xs={12}>
+              <Box sx={{ 
+                textAlign: 'center',
+                mt: 2,
+                padding: '16px',
+                backgroundColor: '#e8f5e9',
+                borderRadius: '8px'
+              }}>
+                <Chip 
+                  label={selectedSlotDetails.skillName} 
+                  color="success" 
+                  sx={{ 
+                    fontWeight: 'bold',
+                    fontSize: '1.1rem',
+                    padding: '8px 16px',
+                    height: 'auto'
+                  }} 
+                />
+                <Typography variant="body2" sx={{ mt: 1, color: '#2e7d32' }}>
+                  Your session has been successfully booked!
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
+        </Box>
+      </DialogContent>
+      <DialogActions sx={{ 
+        padding: '16px 24px', 
+        backgroundColor: '#f5f5f5',
+        borderTop: '1px solid #e0e0e0'
+      }}>
+        <Button 
+          onClick={() => setSlotDetailsDialogOpen(false)}
+          variant="contained"
+          color="success"
+          sx={{
+            borderRadius: '20px',
+            textTransform: 'none',
+            padding: '8px 24px',
+            fontWeight: 'bold',
+            boxShadow: 'none'
+          }}
+        >
+          Close
+        </Button>
+      </DialogActions>
+    </>
+  )}
+</Dialog>
+
       {/* Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Alert
           onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
           severity={snackbar.severity}
-          sx={{ width: '100%' }}
+          sx={{ width: '100%', borderRadius: '8px' }}
+          elevation={6}
         >
           {snackbar.message}
         </Alert>

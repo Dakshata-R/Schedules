@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const moment = require('moment');
 
 class Slot {
   static async create(slotData) {
@@ -49,7 +50,18 @@ class Slot {
 
   static async getAll() {
     const [rows] = await db.query(`
-      SELECT s.*, GROUP_CONCAT(ss.student_email) AS students 
+      SELECT 
+        s.id,
+        s.skill_name as skillName,
+        s.faculty_incharge as facultyIncharge,
+        DATE_FORMAT(s.start_date, '%Y-%m-%d') as startDate,
+        DATE_FORMAT(s.end_date, '%Y-%m-%d') as endDate,
+        TIME_FORMAT(s.from_time, '%H:%i:%s') as fromTime,
+        TIME_FORMAT(s.to_time, '%H:%i:%s') as toTime,
+        s.location,
+        s.priority,
+        s.status,
+        GROUP_CONCAT(ss.student_email) AS studentEmails
       FROM slots s
       LEFT JOIN slot_students ss ON s.id = ss.slot_id
       GROUP BY s.id
@@ -58,78 +70,104 @@ class Slot {
   }
 
   static async findByStudentEmail(email, skills) {
-    // Convert skills to array if it's a string
+    console.log('Searching slots for:', email, 'with skills:', skills);
+    
     const skillsArray = typeof skills === 'string' ? [skills] : skills;
     
+    // Convert skills to uppercase for case-insensitive matching
+    const upperSkills = skillsArray.map(skill => skill.toUpperCase());
+    
     const [rows] = await db.query(`
-      SELECT s.* 
+      SELECT 
+        s.id,
+        s.skill_name as skillName,
+        s.faculty_incharge as facultyIncharge,
+        DATE_FORMAT(s.start_date, '%Y-%m-%d') as startDate,
+        DATE_FORMAT(s.end_date, '%Y-%m-%d') as endDate,
+        TIME_FORMAT(s.from_time, '%H:%i:%s') as fromTime,
+        TIME_FORMAT(s.to_time, '%H:%i:%s') as toTime,
+        s.location,
+        s.priority,
+        s.status,
+        CASE WHEN s.status = 'Booked' THEN 1 ELSE 0 END as isBooked
       FROM slots s
       JOIN slot_students ss ON s.id = ss.slot_id
       WHERE ss.student_email = ? 
-      AND s.skill_name IN (?)
-      AND s.status = 'Available'
-    `, [email, skillsArray]);
+      AND UPPER(s.skill_name) IN (?)
+        AND s.status IN ('Available', 'Booked')
+      ORDER BY s.start_date, s.from_time
+    `, [email, upperSkills]);
+    
+    console.log('Found slots:', rows);
     return rows;
   }
-
-  static async bookSlot(slotId, studentEmail) {
-    const connection = await db.getConnection();
-    try {
-      await connection.beginTransaction();
-      
-      // 1. Check if slot exists and is available
-      const [slots] = await connection.query(
-        `SELECT * FROM slots 
-         WHERE id = ? 
-         AND status = 'Available'
-         FOR UPDATE`, // Lock the row for update
-        [slotId]
-      );
-      
-      if (slots.length === 0) {
-        await connection.rollback();
-        return { success: false, message: 'Slot not available' };
-      }
-
-      // 2. Verify student is assigned to this slot
-      const [assignments] = await connection.query(
-        `SELECT * FROM slot_students 
-         WHERE slot_id = ? 
-         AND student_email = ?`,
-        [slotId, studentEmail]
-      );
-  
-      if (assignments.length === 0) {
-        await connection.rollback();
-        return { success: false, message: 'Student not assigned to this slot' };
-      }
-
-      // 3. Update slot status
-      const [result] = await connection.query(
-        `UPDATE slots SET status = 'Booked' 
-         WHERE id = ?`,
-        [slotId]
-      );
-
-      if (result.affectedRows === 0) {
-        await connection.rollback();
-        return { success: false, message: 'Failed to book slot' };
-      }
-
-      await connection.commit();
-      return { success: true, message: 'Slot booked successfully' };
-    } catch (error) {
+static async bookSlot(slotId, studentEmail) {
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    
+    // Check if slot exists and is available
+    const [slots] = await connection.query(
+      `SELECT * FROM slots 
+       WHERE id = ? 
+       AND status = 'Available'
+       FOR UPDATE`,
+      [slotId]
+    );
+    
+    if (slots.length === 0) {
       await connection.rollback();
-      console.error('Error booking slot:', error);
-      throw error;
-    } finally {
-      connection.release();
+      return { success: false, message: 'Slot not available' };
     }
+
+    // Verify student is assigned to this slot
+    const [assignments] = await connection.query(
+      `SELECT * FROM slot_students 
+       WHERE slot_id = ? 
+       AND student_email = ?`,
+      [slotId, studentEmail]
+    );
+
+    if (assignments.length === 0) {
+      await connection.rollback();
+      return { success: false, message: 'Student not assigned to this slot' };
+    }
+
+    // Update slot status
+    const [result] = await connection.query(
+      `UPDATE slots SET status = 'Booked' 
+       WHERE id = ?`,
+      [slotId]
+    );
+
+    if (result.affectedRows === 0) {
+      await connection.rollback();
+      return { success: false, message: 'Failed to book slot' };
+    }
+
+    await connection.commit();
+    return { success: true, message: 'Slot booked successfully' };
+  } catch (error) {
+    await connection.rollback();
+    console.error('Error booking slot:', error);
+    throw error;
+  } finally {
+    connection.release();
   }
+}
 
   static async getBookedSlots(studentEmail) {
     const [rows] = await db.query(`
-      SELECT s.* 
+      SELECT 
+        s.id,
+        s.skill_name as skillName,
+        s.faculty_incharge as facultyIncharge,
+        DATE_FORMAT(s.start_date, '%Y-%m-%d') as startDate,
+        DATE_FORMAT(s.end_date, '%Y-%m-%d') as endDate,
+        TIME_FORMAT(s.from_time, '%H:%i:%s') as fromTime,
+        TIME_FORMAT(s.to_time, '%H:%i:%s') as toTime,
+        s.location,
+        s.status
       FROM slots s
       JOIN slot_students ss ON s.id = ss.slot_id
       WHERE ss.student_email = ? 
@@ -137,20 +175,21 @@ class Slot {
     `, [studentEmail]);
     return rows;
   }
+
   static async findBookedByStudent(email) {
     const [rows] = await db.query(`
       SELECT 
         s.id,
-        s.skill_name,
-        s.faculty_incharge,
-        s.start_date,
-        s.end_date,
-        s.from_time,
-        s.to_time,
+        s.skill_name as skillName,
+        s.faculty_incharge as facultyIncharge,
+        DATE_FORMAT(s.start_date, '%Y-%m-%d') as startDate,
+        DATE_FORMAT(s.end_date, '%Y-%m-%d') as endDate,
+        TIME_FORMAT(s.from_time, '%H:%i:%s') as fromTime,
+        TIME_FORMAT(s.to_time, '%H:%i:%s') as toTime,
         s.location,
         s.status,
-        s.created_at,
-        ss.student_email
+        s.created_at as createdAt,
+        ss.student_email as studentEmail
       FROM slots s
       JOIN slot_students ss ON s.id = ss.slot_id
       WHERE ss.student_email = ?
@@ -159,9 +198,6 @@ class Slot {
     `, [email]);
     return rows;
   }
-
-  }
-
-
+}
 
 module.exports = Slot;
