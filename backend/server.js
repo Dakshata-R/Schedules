@@ -26,6 +26,8 @@ const slotRoutes = require('./routes/slotRoutes');
 const venueRoutes = require('./routes/schedules/essentials/add_venueRoutes');
 const studentCategoryRoutes = require('./routes/schedules/essentials/student_categoryRoutes');
 const slotScheduleRoutes = require('./routes/schedules/template/slot_scheduleRoutes');
+const slotBookingRoutes = require('./routes/schedules/template/slotBookingRoutes');
+
 const app = express();
 
 // ======================
@@ -78,7 +80,7 @@ app.use('/api/slots', slotRoutes);
 app.use('/api/venues', venueRoutes);
 app.use('/api/student-categories', studentCategoryRoutes);
 app.use('/api/slot-schedules', slotScheduleRoutes);
-
+app.use('/api/slot-schedules', slotBookingRoutes);
 // ======================
 // 4. Error Handling
 // ======================

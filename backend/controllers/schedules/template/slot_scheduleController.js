@@ -50,6 +50,23 @@ exports.createSlotSchedule = async (req, res) => {
     });
   }
 };
+
+exports.getAllSlotSchedules = async (req, res) => {
+  try {
+    const schedules = await SlotSchedule.getAll();
+    res.status(200).json({
+      status: 'success',
+      data: {
+        schedules
+      }
+    });
+  } catch (err) {
+    res.status(400).json({
+      status: 'fail',
+      message: err.message
+    });
+  }
+};
 // Add this new controller method
 exports.getSlotsForStudent = async (req, res) => {
   try {

@@ -10,8 +10,11 @@ import { LocalizationProvider, DatePicker, TimePicker } from '@mui/x-date-picker
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import AddIcon from '@mui/icons-material/Add';
 import Add_Faculty_popup from '../components/schedules_template/Add_Faculty_popup';
+import Add_venue_popup from '../components/schedules_template/Add_venue_popup';
 
 const SlotCreation = ({ onClose, selectedStudents = [], students = [], requestId = null, onSuccess }) => {
+  const [openVenueDialog, setOpenVenueDialog] = useState(false);
+const [selectedVenue, setSelectedVenue] = useState(null);
   const [formData, setFormData] = useState({
     skillName: '',
     facultyIncharge: '',
@@ -29,7 +32,16 @@ const SlotCreation = ({ onClose, selectedStudents = [], students = [], requestId
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [openStudentDialog, setOpenStudentDialog] = useState(false);
-
+  const handleVenueSelect = (venues) => {
+    if (venues.length > 0) {
+      setSelectedVenue(venues[0]);
+      setFormData(prev => ({
+        ...prev,
+        location: venues[0].name
+      }));
+    }
+    setOpenVenueDialog(false);
+  };
   const handleFacultySelect = (selectedFaculties) => {
     if (selectedFaculties.length > 0) {
       setFormData(prev => ({
@@ -143,9 +155,11 @@ const SlotCreation = ({ onClose, selectedStudents = [], students = [], requestId
         }),
         location: formData.location,
         priority: formData.priority,
-        studentEmails: formData.studentEmails
+        studentEmails: formData.studentEmails,
+        venueId: selectedVenue?.id || null, // Add venue ID to the submission
+        venueCapacity: selectedVenue?.capacity || null // Add venue capacity
       };
-  
+      
       if (requestId) {
         // Approving a request
         await axios.put(
@@ -269,15 +283,33 @@ const SlotCreation = ({ onClose, selectedStudents = [], students = [], requestId
             </Grid>
             
             <Grid item xs={12}>
-              <TextField 
-                fullWidth 
-                label="Location" 
-                name="location" 
-                value={formData.location} 
-                onChange={handleChange} 
-                required 
-              />
-            </Grid>
+  <TextField 
+    fullWidth 
+    label="Location" 
+    name="location" 
+    value={formData.location} 
+    onChange={handleChange} 
+    required 
+    InputProps={{
+      endAdornment: (
+        <InputAdornment position="end">
+          <IconButton 
+            onClick={() => setOpenVenueDialog(true)}
+            sx={{ 
+              backgroundColor: 'lightgray',
+              borderRadius: '4px',
+              '&:hover': {
+                backgroundColor: 'darkgray'
+              }
+            }}
+          >
+            <AddIcon />
+          </IconButton>
+        </InputAdornment>
+      ),
+    }}
+  />
+</Grid>
             
             <Grid item xs={12}>
               <Typography variant="subtitle1" sx={{ mb: 1 }}>Priority:</Typography>
@@ -383,6 +415,11 @@ const SlotCreation = ({ onClose, selectedStudents = [], students = [], requestId
         open={openFacultyDialog} 
         onClose={handleFacultySelect}
       />
+      {/* Venue Selection Dialog */}
+<Add_venue_popup 
+  open={openVenueDialog} 
+  onClose={handleVenueSelect}
+/>
     </LocalizationProvider>
   );
 };

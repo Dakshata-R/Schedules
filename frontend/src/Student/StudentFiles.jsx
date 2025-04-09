@@ -35,8 +35,10 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import PersonIcon from "@mui/icons-material/Person";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import axios from "axios";
+import StudentAvailableSlots from "./student_slotbook_files";
 
 const StudentFiles = () => {
+  const [currentView, setCurrentView] = useState('requests');
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -56,42 +58,29 @@ const StudentFiles = () => {
   const [selectedSlotId, setSelectedSlotId] = useState(null);
   const [slotDetailsDialogOpen, setSlotDetailsDialogOpen] = useState(false);
   const [selectedSlotDetails, setSelectedSlotDetails] = useState(null);
+  const [availableSlots, setAvailableSlots] = useState([]);
   const loggedInEmail = localStorage.getItem("userEmail");
   const rowsPerPage = 7;
-// Add this state to StudentFiles.jsx
-const [availableSlots, setAvailableSlots] = useState([]);
 
-// Add this useEffect to fetch slots when component mounts
-useEffect(() => {
-  const fetchAvailableSlots = async () => {
-    try {
-      const response = await axios.get(
-        `http://localhost:8000/api/slot-schedules/for-student/${loggedInEmail}`
-      );
-      setAvailableSlots(response.data.slots || []);
-    } catch (error) {
-      console.error("Error fetching available slots:", error);
+  // Fetch available slots
+  useEffect(() => {
+    const fetchAvailableSlots = async () => {
+      try {
+        const response = await axios.get(
+          `http://localhost:8000/api/slot-schedules/for-student/${loggedInEmail}`
+        );
+        setAvailableSlots(response.data.slots || []);
+      } catch (error) {
+        console.error("Error fetching available slots:", error);
+      }
+    };
+    
+    if (loggedInEmail) {
+      fetchAvailableSlots();
     }
-  };
-  
-  if (loggedInEmail) {
-    fetchAvailableSlots();
-  }
-}, [loggedInEmail, refreshKey]);
+  }, [loggedInEmail, refreshKey]);
 
-// Add this function to format slot data for display
-const formatSlotData = (slot) => {
-  return {
-    id: slot.id,
-    skillName: slot.template_name,
-    facultyIncharge: JSON.parse(slot.faculties).map(f => f.name).join(', '),
-    startDate: formatDate(slot.start_datetime),
-    endDate: formatDate(slot.end_datetime),
-    fromTime: new Date(slot.start_datetime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-    toTime: new Date(slot.end_datetime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-    location: JSON.parse(slot.venues).map(v => v.name).join(', ')
-  };
-};
+  // Fetch requests
   useEffect(() => {
     const fetchRequests = async () => {
       console.log('Fetching requests for:', loggedInEmail);
@@ -99,9 +88,9 @@ const formatSlotData = (slot) => {
         setLoading(true);
         const response = await axios.get(
           `http://localhost:8000/api/requests/with-slots/${loggedInEmail}`,
-          { headers: { 'Cache-Control': 'no-cache' } } // Disable client-side caching
+          { headers: { 'Cache-Control': 'no-cache' } }
         );
-  
+        
         console.log('API Response:', response.data);
         
         const processedRequests = response.data.map(request => ({
@@ -123,6 +112,7 @@ const formatSlotData = (slot) => {
   
     fetchRequests();
   }, [loggedInEmail, refreshKey]);
+
   const handleFilter = (event) => {
     setFilter(event.target.value);
     setPage(1);
@@ -161,7 +151,7 @@ const formatSlotData = (slot) => {
       if (bookedSlot) {
         setSelectedSlotDetails({
           ...bookedSlot,
-          skillName: request.skills.join(', ') // Combine skills if multiple
+          skillName: request.skills.join(', ')
         });
         setSlotDetailsDialogOpen(true);
       } else {
@@ -189,7 +179,6 @@ const formatSlotData = (slot) => {
   const handleBookSlot = (requestId) => {
     const request = requests.find(r => r.id === requestId);
     if (request?.slots?.length > 0) {
-      // Filter slots that are available (status Available or isBooked false)
       const availableSlots = request.slots.filter(slot => 
         slot.status === 'Available' || !slot.isBooked
       );
@@ -212,19 +201,18 @@ const formatSlotData = (slot) => {
       });
     }
   };
+
   const handleSlotSelect = async (slotId) => {
     try {
       setBookingInProgress(true);
       setSelectedSlotId(slotId);
       
-      // Corrected API endpoint path
       const response = await axios.post(
         `http://localhost:8000/api/slots/${slotId}/book`, 
         { email: loggedInEmail }
       );
   
       if (response.data.success) {
-        // Update the state to reflect the booked status
         setRequests(prevRequests => 
           prevRequests.map(request => ({
             ...request,
@@ -242,7 +230,7 @@ const formatSlotData = (slot) => {
           severity: "success"
         });
         setSlotModalOpen(false);
-        setRefreshKey(prev => prev + 1); // Force refresh
+        setRefreshKey(prev => prev + 1);
       } else {
         throw new Error(response.data.message || "Failed to book slot");
       }
@@ -258,9 +246,23 @@ const formatSlotData = (slot) => {
       setSelectedSlotId(null);
     }
   };
+
   const handleSlotModalClose = () => {
     setSlotModalOpen(false);
     setRefreshKey(prev => prev + 1);
+  };
+
+  const formatSlotData = (slot) => {
+    return {
+      id: slot.id,
+      skillName: slot.template_name,
+      facultyIncharge: JSON.parse(slot.faculties).map(f => f.name).join(', '),
+      startDate: formatDate(slot.start_datetime),
+      endDate: formatDate(slot.end_datetime),
+      fromTime: new Date(slot.start_datetime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+      toTime: new Date(slot.end_datetime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+      location: JSON.parse(slot.venues).map(v => v.name).join(', ')
+    };
   };
 
   const filteredRequests = requests.filter((request) => {
@@ -320,248 +322,295 @@ const formatSlotData = (slot) => {
 
   return (
     <Box sx={{ backgroundColor: "#f5f6fa", minHeight: "100vh", padding: "16px", width: "88vw" }}>
-      <Box
-        sx={{
-          padding: "6px",
-          marginTop: "45px",
-          backgroundColor: "#ffffff",
-          borderRadius: "8px",
-          boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
-          mb: 2,
-        }}
-      >
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px" }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Typography variant="h5" sx={{ fontWeight: "bold", color: "#3f51b5" }}>My Requests</Typography>
-            <Chip label={`${filteredRequests.length} Requests`} sx={{ backgroundColor: "#e3f2fd", color: "#2196f3", fontWeight: "bold" }} />
-          </Box>
-        </Box>
-
-        <Box sx={{ padding: "0 16px 16px 16px" }}>
-          <Typography variant="body1" sx={{ color: "#616161" }}>View and manage your schedule requests.</Typography>
-        </Box>
-
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 16px 16px 16px" }}>
-          <Box sx={{ display: "flex", gap: 2 }}>
-            <FormControl variant="outlined" size="small" sx={{ minWidth: "120px" }}>
-              <Select
-                value={filter}
-                onChange={handleFilter}
-                displayEmpty
-                sx={{ borderRadius: "20px" }}
-              >
-                <MenuItem value="all">All</MenuItem>
-                <MenuItem value="pending">Pending</MenuItem>
-                <MenuItem value="approved">Approved</MenuItem>
-                <MenuItem value="rejected">Rejected</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-
-          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-            <TextField
-              size="small"
-              placeholder="Search by name, roll or department"
-              value={searchQuery}
-              onChange={handleSearch}
-              InputProps={{ 
-                startAdornment: <SearchIcon sx={{ color: "gray", mr: 1 }} />,
-                sx: { borderRadius: "20px" }
-              }}
-              sx={{ backgroundColor: "#ffffff", width: "300px" }}
-            />
-          </Box>
-        </Box>
-
-        <TableContainer component={Paper} sx={{ marginBottom: "16px", borderRadius: "8px" }}>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                <TableCell sx={{ fontWeight: "bold" }}>User Details</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Department</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Requested Skills</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {paginatedRequests.length > 0 ? (
-                paginatedRequests.map((request) => {
-                  const statusColors = getStatusColor(request.status);
-                  const hasSlots = request.slots?.length > 0;
-                 // Replace all slot status checks with consistent logic
-const isBooked = request.slots?.some(slot => slot.status === 'Booked' || slot.isBooked);
-                  const hasBookableSlots = hasSlots && request.slots.some(slot => !slot.isBooked);
-
-                  return (
-                    <TableRow key={request.id} hover>
-                      <TableCell>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                          <Avatar sx={{ bgcolor: "#3f51b5" }}>
-                            {request.student_name?.charAt(0) || "U"}
-                          </Avatar>
-                          <Box>
-                            <Typography variant="body1" sx={{ fontWeight: "bold" }}>{request.student_name}</Typography>
-                            {request.roll_number && (
-                              <Typography variant="body2" sx={{ color: "#616161" }}>Roll: {request.roll_number}</Typography>
-                            )}
-                          </Box>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={request.department || 'N/A'} 
-                          size="small" 
-                          sx={{ backgroundColor: "#e0f7fa", color: "#00838f" }} 
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {request.skills.length > 0 ? (
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {request.skills.map((skill, index) => (
-                              <Chip 
-                                key={index} 
-                                label={skill} 
-                                size="small" 
-                                sx={{ backgroundColor: '#e3f2fd', color: "#1e88e5" }} 
-                              />
-                            ))}
-                          </Box>
-                        ) : (
-                          <Typography variant="body2" color="textSecondary">No skills</Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          backgroundColor: statusColors.bgcolor,
-                          padding: "4px 8px",
-                          borderRadius: "12px",
-                          width: "fit-content",
-                        }}>
-                          <Box sx={{
-                            width: "8px",
-                            height: "8px",
-                            borderRadius: "50%",
-                            backgroundColor: statusColors.dotColor,
-                          }} />
-                          <Typography variant="body1" sx={{ color: statusColors.color, fontWeight: "medium" }}>
-                            {request.status?.charAt(0).toUpperCase() + request.status?.slice(1)}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-<TableCell sx={{ display: 'flex', gap: 1 }}>
-
-<Button 
-  variant="contained"
-  sx={{
-    backgroundColor: request.status === 'Approved'
-      ? request.slots?.some(slot => slot.status === 'Booked' || slot.isBooked)
-        ? '#1b5e20' // Dark green for booked
-        : '#2e7d32' // Green for available
-      : '#e0e0e0', // Gray for pending/rejected
-    color: '#ffffff',
-    textTransform: 'none',
-    borderRadius: '20px',
-    '&:hover': {
-      backgroundColor: request.status === 'Approved'
-        ? request.slots?.some(slot => slot.status === 'Booked' || slot.isBooked)
-          ? '#1b5e20'
-          : '#1b5e20'
-        : '#e0e0e0',
-    },
-    minWidth: '120px',
-    boxShadow: 'none',
-    '&:disabled': {
-      backgroundColor: '#e0e0e0',
-      color: '#9e9e9e'
-    }
-  }}
-  onClick={() => {
-    const bookedSlot = request.slots?.find(slot => 
-      slot.status === 'Booked' || slot.isBooked
-    );
-    if (bookedSlot) {
-      handleViewSlot(request.id);
-    } else {
-      handleBookSlot(request.id);
-    }
-  }}
-  disabled={request.status !== 'Approved'}
-  startIcon={request.slots?.some(slot => 
-    slot.status === 'Booked' || slot.isBooked
-  ) ? <EventIcon /> : null}
->
-  {request.status === 'Approved'
-    ? request.slots?.some(slot => 
-        slot.status === 'Booked' || slot.isBooked
-      )
-      ? 'View Slot'
-      : 'Book Slot'
-    : 'Pending Approval'}
-</Button>
-  <IconButton 
-    onClick={() => handleDeleteClick(request.id)} 
-    sx={{ 
-      color: "#d32f2f",
-      '&:hover': {
-        backgroundColor: 'rgba(211, 47, 47, 0.08)'
-      }
-    }}
-    disabled={request.status !== 'Pending'}
-  >
-    <DeleteIcon />
-  </IconButton>
-</TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                    <Typography variant="body1" color="textSecondary">
-                      No requests found matching your criteria
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-
-        {filteredRequests.length > 0 && (
-          <Box sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "16px",
-          }}>
-            <Typography variant="body1" sx={{ color: "#616161" }}>
-              Showing {paginatedRequests.length} of {filteredRequests.length} requests (Page {page} of {totalPages})
-            </Typography>
-            <Box sx={{ display: "flex", gap: 2 }}>
-              <Button
-                variant="outlined"
-                disabled={page === 1}
-                onClick={() => handlePageChange(page - 1)}
-                sx={{ borderRadius: '20px', textTransform: 'none' }}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outlined"
-                disabled={page === totalPages || totalPages === 0}
-                onClick={() => handlePageChange(page + 1)}
-                sx={{ borderRadius: '20px', textTransform: 'none' }}
-              >
-                Next
-              </Button>
+      {currentView === 'requests' ? (
+        <Box
+          sx={{
+            padding: "6px",
+            marginTop: "45px",
+            backgroundColor: "#ffffff",
+            borderRadius: "8px",
+            boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+            mb: 2,
+          }}
+        >
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <Typography variant="h5" sx={{ fontWeight: "bold", color: "#3f51b5" }}>My Requests</Typography>
+              <Chip label={`${filteredRequests.length} Requests`} sx={{ backgroundColor: "#e3f2fd", color: "#2196f3", fontWeight: "bold" }} />
             </Box>
           </Box>
-        )}
-      </Box>
+
+          <Box sx={{ padding: "0 16px 16px 16px" }}>
+            <Typography variant="body1" sx={{ color: "#616161" }}>View and manage your schedule requests.</Typography>
+          </Box>
+
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 16px 16px 16px" }}>
+            <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+              <FormControl variant="outlined" size="small" sx={{ minWidth: "120px" }}>
+                <Select
+                  value={filter}
+                  onChange={handleFilter}
+                  displayEmpty
+                  sx={{ borderRadius: "20px" }}
+                >
+                  <MenuItem value="all">All</MenuItem>
+                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="approved">Approved</MenuItem>
+                  <MenuItem value="rejected">Rejected</MenuItem>
+                </Select>
+              </FormControl>
+
+              <Button
+                variant="contained"
+                onClick={() => setCurrentView('slots')}
+                sx={{
+                  borderRadius: '20px',
+                  textTransform: 'none',
+                  backgroundColor: '#3f51b5',
+                  color: '#ffffff',
+                  '&:hover': {
+                    backgroundColor: '#303f9f'
+                  }
+                }}
+                startIcon={<EventIcon />}
+              >
+                Training Slots
+              </Button>
+            </Box>
+
+            <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+              <TextField
+                size="small"
+                placeholder="Search by name, roll or department"
+                value={searchQuery}
+                onChange={handleSearch}
+                InputProps={{ 
+                  startAdornment: <SearchIcon sx={{ color: "gray", mr: 1 }} />,
+                  sx: { borderRadius: "20px" }
+                }}
+                sx={{ backgroundColor: "#ffffff", width: "300px" }}
+              />
+            </Box>
+          </Box>
+
+          <TableContainer component={Paper} sx={{ marginBottom: "16px", borderRadius: "8px" }}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                  <TableCell sx={{ fontWeight: "bold" }}>User Details</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Department</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Requested Skills</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {paginatedRequests.length > 0 ? (
+                  paginatedRequests.map((request) => {
+                    const statusColors = getStatusColor(request.status);
+                    const hasSlots = request.slots?.length > 0;
+                    const isBooked = request.slots?.some(slot => slot.status === 'Booked' || slot.isBooked);
+                    const hasBookableSlots = hasSlots && request.slots.some(slot => !slot.isBooked);
+
+                    return (
+                      <TableRow key={request.id} hover>
+                        <TableCell>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                            <Avatar sx={{ bgcolor: "#3f51b5" }}>
+                              {request.student_name?.charAt(0) || "U"}
+                            </Avatar>
+                            <Box>
+                              <Typography variant="body1" sx={{ fontWeight: "bold" }}>{request.student_name}</Typography>
+                              {request.roll_number && (
+                                <Typography variant="body2" sx={{ color: "#616161" }}>Roll: {request.roll_number}</Typography>
+                              )}
+                            </Box>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={request.department || 'N/A'} 
+                            size="small" 
+                            sx={{ backgroundColor: "#e0f7fa", color: "#00838f" }} 
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {request.skills.length > 0 ? (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {request.skills.map((skill, index) => (
+                                <Chip 
+                                  key={index} 
+                                  label={skill} 
+                                  size="small" 
+                                  sx={{ backgroundColor: '#e3f2fd', color: "#1e88e5" }} 
+                                />
+                              ))}
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" color="textSecondary">No skills</Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            backgroundColor: statusColors.bgcolor,
+                            padding: "4px 8px",
+                            borderRadius: "12px",
+                            width: "fit-content",
+                          }}>
+                            <Box sx={{
+                              width: "8px",
+                              height: "8px",
+                              borderRadius: "50%",
+                              backgroundColor: statusColors.dotColor,
+                            }} />
+                            <Typography variant="body1" sx={{ color: statusColors.color, fontWeight: "medium" }}>
+                              {request.status?.charAt(0).toUpperCase() + request.status?.slice(1)}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={{ display: 'flex', gap: 1 }}>
+                          <Button 
+                            variant="contained"
+                            sx={{
+                              backgroundColor: request.status === 'Approved'
+                                ? isBooked
+                                  ? '#1b5e20'
+                                  : '#2e7d32'
+                                : '#e0e0e0',
+                              color: '#ffffff',
+                              textTransform: 'none',
+                              borderRadius: '20px',
+                              '&:hover': {
+                                backgroundColor: request.status === 'Approved'
+                                  ? isBooked
+                                    ? '#1b5e20'
+                                    : '#1b5e20'
+                                  : '#e0e0e0',
+                              },
+                              minWidth: '120px',
+                              boxShadow: 'none',
+                              '&:disabled': {
+                                backgroundColor: '#e0e0e0',
+                                color: '#9e9e9e'
+                              }
+                            }}
+                            onClick={() => {
+                              const bookedSlot = request.slots?.find(slot => 
+                                slot.status === 'Booked' || slot.isBooked
+                              );
+                              if (bookedSlot) {
+                                handleViewSlot(request.id);
+                              } else {
+                                handleBookSlot(request.id);
+                              }
+                            }}
+                            disabled={request.status !== 'Approved'}
+                            startIcon={isBooked ? <EventIcon /> : null}
+                          >
+                            {request.status === 'Approved'
+                              ? isBooked
+                                ? 'View Slot'
+                                : 'Book Slot'
+                              : 'Pending Approval'}
+                          </Button>
+                          <IconButton 
+                            onClick={() => handleDeleteClick(request.id)} 
+                            sx={{ 
+                              color: "#d32f2f",
+                              '&:hover': {
+                                backgroundColor: 'rgba(211, 47, 47, 0.08)'
+                              }
+                            }}
+                            disabled={request.status !== 'Pending'}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                      <Typography variant="body1" color="textSecondary">
+                        No requests found matching your criteria
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {filteredRequests.length > 0 && (
+            <Box sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "16px",
+            }}>
+              <Typography variant="body1" sx={{ color: "#616161" }}>
+                Showing {paginatedRequests.length} of {filteredRequests.length} requests (Page {page} of {totalPages})
+              </Typography>
+              <Box sx={{ display: "flex", gap: 2 }}>
+                <Button
+                  variant="outlined"
+                  disabled={page === 1}
+                  onClick={() => handlePageChange(page - 1)}
+                  sx={{ borderRadius: '20px', textTransform: 'none' }}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outlined"
+                  disabled={page === totalPages || totalPages === 0}
+                  onClick={() => handlePageChange(page + 1)}
+                  sx={{ borderRadius: '20px', textTransform: 'none' }}
+                >
+                  Next
+                </Button>
+              </Box>
+            </Box>
+          )}
+        </Box>
+      ) : (
+        <Box
+          sx={{
+            padding: "6px",
+            marginTop: "45px",
+            backgroundColor: "#ffffff",
+            borderRadius: "8px",
+            boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+            mb: 2,
+          }}
+        >
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <Typography variant="h5" sx={{ fontWeight: "bold", color: "#3f51b5" }}>
+                Available Training Slots
+              </Typography>
+            </Box>
+            <Button
+              variant="contained"
+              onClick={() => setCurrentView('requests')}
+              sx={{
+                backgroundColor: "#3f51b5",
+                color: "white",
+                textTransform: "none",
+                "&:hover": {
+                  backgroundColor: "#303f9f",
+                },
+              }}
+            >
+              Back to My Requests
+            </Button>
+          </Box>
+          <StudentAvailableSlots />
+        </Box>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <Dialog
@@ -616,37 +665,37 @@ const isBooked = request.slots?.some(slot => slot.status === 'Booked' || slot.is
                 </TableHead>
                 <TableBody>
                   {selectedSlots.map((slot) => (
-                   <TableRow key={slot.id}>
-                   <TableCell>{slot.skillName}</TableCell>
-                   <TableCell>{slot.facultyIncharge}</TableCell>
-                   <TableCell>{slot.startDate} to {slot.endDate}</TableCell>
-                   <TableCell>{formatTime(slot.fromTime)} - {formatTime(slot.toTime)}</TableCell>
-                   <TableCell>{slot.location}</TableCell>
-                   <TableCell>
-                   <Button 
-  variant="contained" 
-  color="primary"
-  onClick={() => handleSlotSelect(slot.id)}
-  disabled={slot.status === 'Booked' || (bookingInProgress && selectedSlotId === slot.id)}
-  startIcon={
-    bookingInProgress && selectedSlotId === slot.id ? 
-      <CircularProgress size={20} /> : 
-      null
-  }
-  sx={{
-    textTransform: 'none',
-    borderRadius: '20px',
-    '&:disabled': {
-      backgroundColor: '#e0e0e0',
-      color: '#9e9e9e'
-    }
-  }}
->
-  {slot.status === 'Booked' ? 'Booked' : 
-   (bookingInProgress && selectedSlotId === slot.id ? 'Booking...' : 'Book This Slot')}
-</Button>
-                   </TableCell>
-                 </TableRow>
+                    <TableRow key={slot.id}>
+                      <TableCell>{slot.skillName}</TableCell>
+                      <TableCell>{slot.facultyIncharge}</TableCell>
+                      <TableCell>{slot.startDate} to {slot.endDate}</TableCell>
+                      <TableCell>{formatTime(slot.fromTime)} - {formatTime(slot.toTime)}</TableCell>
+                      <TableCell>{slot.location}</TableCell>
+                      <TableCell>
+                        <Button 
+                          variant="contained" 
+                          color="primary"
+                          onClick={() => handleSlotSelect(slot.id)}
+                          disabled={slot.status === 'Booked' || (bookingInProgress && selectedSlotId === slot.id)}
+                          startIcon={
+                            bookingInProgress && selectedSlotId === slot.id ? 
+                              <CircularProgress size={20} /> : 
+                              null
+                          }
+                          sx={{
+                            textTransform: 'none',
+                            borderRadius: '20px',
+                            '&:disabled': {
+                              backgroundColor: '#e0e0e0',
+                              color: '#9e9e9e'
+                            }
+                          }}
+                        >
+                          {slot.status === 'Booked' ? 'Booked' : 
+                           (bookingInProgress && selectedSlotId === slot.id ? 'Booking...' : 'Book This Slot')}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                   ))}
                 </TableBody>
               </Table>
@@ -660,205 +709,205 @@ const isBooked = request.slots?.some(slot => slot.status === 'Booked' || slot.is
         </DialogActions>
       </Dialog>
 
-    {/* Booked Slot Details Dialog */}
-<Dialog
-  open={slotDetailsDialogOpen}
-  onClose={() => setSlotDetailsDialogOpen(false)}
-  maxWidth="sm"
-  fullWidth
-  PaperProps={{
-    sx: {
-      borderRadius: '16px',
-      background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)',
-      boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.15)',
-      overflow: 'hidden'
-    }
-  }}
->
-  {selectedSlotDetails && (
-    <>
-      <DialogTitle sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        backgroundColor: '#2e7d32',
-        color: 'white',
-        padding: '20px 24px',
-        background: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)'
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-          <CheckCircleIcon sx={{ 
-            mr: 2, 
-            fontSize: '2.5rem',
-            color: '#a5d6a7'
-          }} />
-          <Box>
-            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-              Your Booked Session
-            </Typography>
-            <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
-              {selectedSlotDetails.skillName} Training
-            </Typography>
-          </Box>
-        </Box>
-      </DialogTitle>
-      <DialogContent sx={{ padding: 0 }}>
-        <Box sx={{ 
-          padding: '24px',
-          background: 'white',
-          margin: '16px',
-          borderRadius: '12px',
-          boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.05)'
-        }}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                mb: 3,
-                padding: '12px',
-                backgroundColor: '#f5f5f5',
-                borderRadius: '8px'
-              }}>
-                <PersonIcon sx={{ 
+      {/* Booked Slot Details Dialog */}
+      <Dialog
+        open={slotDetailsDialogOpen}
+        onClose={() => setSlotDetailsDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)',
+            boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.15)',
+            overflow: 'hidden'
+          }
+        }}
+      >
+        {selectedSlotDetails && (
+          <>
+            <DialogTitle sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              backgroundColor: '#2e7d32',
+              color: 'white',
+              padding: '20px 24px',
+              background: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)'
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                <CheckCircleIcon sx={{ 
                   mr: 2, 
-                  color: '#2e7d32',
-                  fontSize: '2rem'
+                  fontSize: '2.5rem',
+                  color: '#a5d6a7'
                 }} />
                 <Box>
-                  <Typography variant="subtitle2" color="textSecondary">
-                    Faculty Incharge
+                  <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                    Your Booked Session
                   </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                    {selectedSlotDetails.facultyIncharge}
+                  <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
+                    {selectedSlotDetails.skillName} Training
                   </Typography>
                 </Box>
               </Box>
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
+            </DialogTitle>
+            <DialogContent sx={{ padding: 0 }}>
               <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                mb: 3,
-                padding: '12px',
-                backgroundColor: '#f5f5f5',
-                borderRadius: '8px'
+                padding: '24px',
+                background: 'white',
+                margin: '16px',
+                borderRadius: '12px',
+                boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.05)'
               }}>
-                <EventIcon sx={{ 
-                  mr: 2, 
-                  color: '#2e7d32',
-                  fontSize: '2rem'
-                }} />
-                <Box>
-                  <Typography variant="subtitle2" color="textSecondary">
-                    Date
-                  </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                    {formatDate(selectedSlotDetails.startDate)} - {formatDate(selectedSlotDetails.endDate)}
-                  </Typography>
-                </Box>
+                <Grid container spacing={3}>
+                  <Grid item xs={12}>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      mb: 3,
+                      padding: '12px',
+                      backgroundColor: '#f5f5f5',
+                      borderRadius: '8px'
+                    }}>
+                      <PersonIcon sx={{ 
+                        mr: 2, 
+                        color: '#2e7d32',
+                        fontSize: '2rem'
+                      }} />
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Faculty Incharge
+                        </Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                          {selectedSlotDetails.facultyIncharge}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      mb: 3,
+                      padding: '12px',
+                      backgroundColor: '#f5f5f5',
+                      borderRadius: '8px'
+                    }}>
+                      <EventIcon sx={{ 
+                        mr: 2, 
+                        color: '#2e7d32',
+                        fontSize: '2rem'
+                      }} />
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Date
+                        </Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                          {formatDate(selectedSlotDetails.startDate)} - {formatDate(selectedSlotDetails.endDate)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      mb: 3,
+                      padding: '12px',
+                      backgroundColor: '#f5f5f5',
+                      borderRadius: '8px'
+                    }}>
+                      <ScheduleIcon sx={{ 
+                        mr: 2, 
+                        color: '#2e7d32',
+                        fontSize: '2rem'
+                      }} />
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Time
+                        </Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                          {formatTime(selectedSlotDetails.fromTime)} - {formatTime(selectedSlotDetails.toTime)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  
+                  <Grid item xs={12}>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      mb: 3,
+                      padding: '12px',
+                      backgroundColor: '#f5f5f5',
+                      borderRadius: '8px'
+                    }}>
+                      <LocationOnIcon sx={{ 
+                        mr: 2, 
+                        color: '#2e7d32',
+                        fontSize: '2rem'
+                      }} />
+                      <Box>
+                        <Typography variant="subtitle2" color="textSecondary">
+                          Location
+                        </Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                          {selectedSlotDetails.location}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  
+                  <Grid item xs={12}>
+                    <Box sx={{ 
+                      textAlign: 'center',
+                      mt: 2,
+                      padding: '16px',
+                      backgroundColor: '#e8f5e9',
+                      borderRadius: '8px'
+                    }}>
+                      <Chip 
+                        label={selectedSlotDetails.skillName} 
+                        color="success" 
+                        sx={{ 
+                          fontWeight: 'bold',
+                          fontSize: '1.1rem',
+                          padding: '8px 16px',
+                          height: 'auto'
+                        }} 
+                      />
+                      <Typography variant="body2" sx={{ mt: 1, color: '#2e7d32' }}>
+                        Your session has been successfully booked!
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
               </Box>
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                mb: 3,
-                padding: '12px',
-                backgroundColor: '#f5f5f5',
-                borderRadius: '8px'
-              }}>
-                <ScheduleIcon sx={{ 
-                  mr: 2, 
-                  color: '#2e7d32',
-                  fontSize: '2rem'
-                }} />
-                <Box>
-                  <Typography variant="subtitle2" color="textSecondary">
-                    Time
-                  </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                    {formatTime(selectedSlotDetails.fromTime)} - {formatTime(selectedSlotDetails.toTime)}
-                  </Typography>
-                </Box>
-              </Box>
-            </Grid>
-            
-            <Grid item xs={12}>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                mb: 3,
-                padding: '12px',
-                backgroundColor: '#f5f5f5',
-                borderRadius: '8px'
-              }}>
-                <LocationOnIcon sx={{ 
-                  mr: 2, 
-                  color: '#2e7d32',
-                  fontSize: '2rem'
-                }} />
-                <Box>
-                  <Typography variant="subtitle2" color="textSecondary">
-                    Location
-                  </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                    {selectedSlotDetails.location}
-                  </Typography>
-                </Box>
-              </Box>
-            </Grid>
-            
-            <Grid item xs={12}>
-              <Box sx={{ 
-                textAlign: 'center',
-                mt: 2,
-                padding: '16px',
-                backgroundColor: '#e8f5e9',
-                borderRadius: '8px'
-              }}>
-                <Chip 
-                  label={selectedSlotDetails.skillName} 
-                  color="success" 
-                  sx={{ 
-                    fontWeight: 'bold',
-                    fontSize: '1.1rem',
-                    padding: '8px 16px',
-                    height: 'auto'
-                  }} 
-                />
-                <Typography variant="body2" sx={{ mt: 1, color: '#2e7d32' }}>
-                  Your session has been successfully booked!
-                </Typography>
-              </Box>
-            </Grid>
-          </Grid>
-        </Box>
-      </DialogContent>
-      <DialogActions sx={{ 
-        padding: '16px 24px', 
-        backgroundColor: '#f5f5f5',
-        borderTop: '1px solid #e0e0e0'
-      }}>
-        <Button 
-          onClick={() => setSlotDetailsDialogOpen(false)}
-          variant="contained"
-          color="success"
-          sx={{
-            borderRadius: '20px',
-            textTransform: 'none',
-            padding: '8px 24px',
-            fontWeight: 'bold',
-            boxShadow: 'none'
-          }}
-        >
-          Close
-        </Button>
-      </DialogActions>
-    </>
-  )}
-</Dialog>
+            </DialogContent>
+            <DialogActions sx={{ 
+              padding: '16px 24px', 
+              backgroundColor: '#f5f5f5',
+              borderTop: '1px solid #e0e0e0'
+            }}>
+              <Button 
+                onClick={() => setSlotDetailsDialogOpen(false)}
+                variant="contained"
+                color="success"
+                sx={{
+                  borderRadius: '20px',
+                  textTransform: 'none',
+                  padding: '8px 24px',
+                  fontWeight: 'bold',
+                  boxShadow: 'none'
+                }}
+              >
+                Close
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
 
       {/* Snackbar for notifications */}
       <Snackbar

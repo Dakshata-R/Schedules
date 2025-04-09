@@ -20,5 +20,9 @@ router.post(
   ],
   slotScheduleController.createSlotSchedule
 );
+// Add this new route
+router.get('/for-student/:email', slotScheduleController.getSlotsForStudent);
+// GET endpoint (new)
+router.get('/', slotScheduleController.getAllSlotSchedules);
 
 module.exports = router;

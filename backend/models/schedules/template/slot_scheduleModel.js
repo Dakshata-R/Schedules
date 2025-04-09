@@ -13,7 +13,18 @@ class SlotSchedule {
       throw err;
     }
   }
-// Add this method to slot_scheduleModel.js
+
+  static async getAll() {
+    try {
+      const [results] = await db.query(
+        `SELECT * FROM slot_schedules ORDER BY created_at DESC`
+      );
+      return results;
+    } catch (err) {
+      throw err;
+    }
+  }
+  // Add this method to slot_scheduleModel.js
 static async getSlotsForStudent(studentEmail) {
   try {
     // First get the student's year
@@ -51,7 +62,6 @@ static async getSlotsForStudent(studentEmail) {
     throw err;
   }
 }
-  // Add other model methods as needed
 }
 
 
