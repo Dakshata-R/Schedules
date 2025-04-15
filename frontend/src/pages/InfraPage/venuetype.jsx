@@ -40,8 +40,10 @@ const VenueType = ({ errors, setVenueTypeData, venueTypeData }) => {
   };
 
   const handleChange = (field, value) => {
-    const updatedData = { ...venueTypeData, [field]: value };
-    setVenueTypeData(updatedData); // Update the parent state
+    setVenueTypeData(prev => ({
+      ...prev,
+      [field]: Array.isArray(value) ? [...value] : value
+    }));
   };
 
   return (
@@ -49,25 +51,21 @@ const VenueType = ({ errors, setVenueTypeData, venueTypeData }) => {
       <Grid container spacing={5}>
         {/* Left Grid */}
         <Grid item xs={12} md={8}>
-          {/* Capacity of Venue Dropdown */}
+          {/* Capacity of Venue Text Field */}
           <Box sx={{ marginBottom: "20px" }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <Typography fontSize={"19px"} sx={{ fontWeight: "bold", marginBottom: "10px" }}>
                 Capacity of venue
               </Typography>
-              
             </Box>
-            <Select
+            <TextField
               fullWidth
+              placeholder="Enter capacity (e.g., 60 persons)"
               value={venueTypeData.capacity || ""}
               onChange={(e) => handleChange("capacity", e.target.value)}
               error={!!errors.capacity}
-              sx={{ backgroundColor: "#ff6fa", borderRadius: "8px" }}
-            >
-              <MenuItem value="60 persons">60 persons</MenuItem>
-              <MenuItem value="100 persons">100 persons</MenuItem>
-              <MenuItem value="200 persons">200 persons</MenuItem>
-            </Select>
+              sx={{ backgroundColor: "#f5f6fa", borderRadius: "8px" }}
+            />
             {errors.capacity && (
               <Typography variant="body2" sx={{ color: "red", marginTop: "5px" }}>
                 {errors.capacity}
@@ -90,6 +88,8 @@ const VenueType = ({ errors, setVenueTypeData, venueTypeData }) => {
               <MenuItem value="Basement">Basement</MenuItem>
               <MenuItem value="Ground Floor">Ground Floor</MenuItem>
               <MenuItem value="First Floor">First Floor</MenuItem>
+              <MenuItem value="Second Floor">Second Floor</MenuItem>
+              <MenuItem value="Third Floor">Third Floor</MenuItem>
             </Select>
             {errors.floor && (
               <Typography variant="body2" sx={{ color: "red", marginTop: "5px" }}>

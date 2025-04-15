@@ -1,36 +1,23 @@
 const express = require('express');
+const router = express.Router();
 const multer = require('multer');
 const infraController = require('../controllers/infracontroller');
-const path = require('path');
 
-const router = express.Router();
-
-// Configure multer storage
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (req, file, cb) {
-    const originalName = file.originalname;
-    const fileExtension = path.extname(originalName);
-    const fileNameWithoutExtension = path.basename(originalName, fileExtension);
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const finalFileName = `${fileNameWithoutExtension}-${uniqueSuffix}${fileExtension}`;
-    cb(null, finalFileName);
-  },
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(), // Store files in memory
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
 });
 
-const upload = multer({ storage: storage });
+// Save infrastructure data (single route with upload middleware)
+router.post('/save-infrastructure', upload.single('image'), infraController.saveInfrastructure);
 
-// Existing routes
-router.post('/api/save-basic', upload.single('image'), infraController.saveBasic);
-router.post('/api/save-venue-type', infraController.saveVenueType);
-router.post('/api/save-facility', infraController.saveFacility);
+// Get all infrastructure
+router.get('/fetch-combined-data', infraController.getAllInfrastructure);
 
-// New route for fetching combined data
-router.get('/api/fetch-combined-data', infraController.fetchCombinedData);
-
-// New route for deleting a row by uniqueId
-router.delete('/api/delete-row/:uniqueId', infraController.deleteRow);
+// Delete infrastructure by unique ID
+router.delete('/delete-row/:uniqueId', infraController.deleteInfrastructure);
 
 module.exports = router;

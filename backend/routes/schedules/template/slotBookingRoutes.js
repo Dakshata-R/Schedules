@@ -1,16 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const slotBookingController = require('../../../controllers/schedules/template/slotBookingController');
+
 // Book a slot
-router.post('/book-slot', slotBookingController.bookSlot);
+router.post('/:slotId/book', slotBookingController.bookSlot);
 
-// Get bookings for a student
-router.get('/for-student/:email', slotBookingController.getStudentBookings);
+router.get('/all', slotBookingController.getAllBookings);
+// Get student's bookings
+router.get('/student/:studentEmail', slotBookingController.getStudentBookings);
 
-// Get available slots
-router.get('/available-slots', slotBookingController.getAvailableSlots);
-
-
-
+// Cancel a booking
+router.post('/:bookingId/cancel', slotBookingController.cancelBooking);
 
 module.exports = router;
+
+
+
+

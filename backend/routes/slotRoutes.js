@@ -83,6 +83,9 @@ router.get('/requests/with-slots/:email', async (req, res) => {
 });
 
 
+router.get('/faculty/:email', slotController.getFacultySlotsByEmail);
+
+
 
 
 module.exports = router;

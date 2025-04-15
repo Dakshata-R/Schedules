@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
   Box, Button, TextField, Typography, Grid, Paper, Chip,
@@ -14,7 +14,17 @@ import Add_venue_popup from '../components/schedules_template/Add_venue_popup';
 
 const SlotCreation = ({ onClose, selectedStudents = [], students = [], requestId = null, onSuccess }) => {
   const [openVenueDialog, setOpenVenueDialog] = useState(false);
-const [selectedVenue, setSelectedVenue] = useState(null);
+  const [selectedVenue, setSelectedVenue] = useState(null);
+  const [venueAvailability, setVenueAvailability] = useState({
+    available: true,
+    conflicts: []
+  });
+  const [openFacultyDialog, setOpenFacultyDialog] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+  const [openStudentDialog, setOpenStudentDialog] = useState(false);
+
   const [formData, setFormData] = useState({
     skillName: '',
     facultyIncharge: '',
@@ -27,21 +37,81 @@ const [selectedVenue, setSelectedVenue] = useState(null);
     studentEmails: [...selectedStudents]
   });
 
-  const [openFacultyDialog, setOpenFacultyDialog] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
-  const [openStudentDialog, setOpenStudentDialog] = useState(false);
-  const handleVenueSelect = (venues) => {
+  const handleVenueSelect = async (venues) => {
     if (venues.length > 0) {
-      setSelectedVenue(venues[0]);
+      const venue = venues[0];
+      setSelectedVenue(venue);
       setFormData(prev => ({
         ...prev,
-        location: venues[0].name
+        location: venue.name
       }));
+  
+      // Check availability if we have valid dates and times
+      if (formData.startDate && formData.endDate && formData.fromTime && formData.toTime) {
+        try {
+          const startDateTime = combineDateAndTime(formData.startDate, formData.fromTime);
+          const endDateTime = combineDateAndTime(formData.endDate, formData.toTime);
+  
+          if (startDateTime && endDateTime) {
+            const response = await axios.get(
+              `http://localhost:8000/api/venues/check-availability`,
+              {
+                params: {
+                  venueId: venue.id,
+                  startDateTime,
+                  endDateTime
+                }
+              }
+            );
+            setVenueAvailability(response.data);
+          }
+        } catch (error) {
+          console.error('Error checking venue availability:', error);
+          setVenueAvailability({
+            available: false,
+            error: error.message,
+            conflicts: []
+          });
+        }
+      }
     }
     setOpenVenueDialog(false);
   };
+
+  useEffect(() => {
+    const checkAvailability = async () => {
+      if (selectedVenue && formData.startDate && formData.endDate && formData.fromTime && formData.toTime) {
+        try {
+          const startDateTime = combineDateAndTime(formData.startDate, formData.fromTime);
+          const endDateTime = combineDateAndTime(formData.endDate, formData.toTime);
+  
+          if (startDateTime && endDateTime) {
+            const response = await axios.get(
+              `http://localhost:8000/api/venues/check-availability`,
+              {
+                params: {
+                  venueId: selectedVenue.id,
+                  startDateTime,
+                  endDateTime
+                }
+              }
+            );
+            setVenueAvailability(response.data);
+          }
+        } catch (error) {
+          console.error('Error checking venue availability:', error);
+          setVenueAvailability({
+            available: false,
+            error: error.message,
+            conflicts: []
+          });
+        }
+      }
+    };
+  
+    checkAvailability();
+  }, [formData.startDate, formData.endDate, formData.fromTime, formData.toTime, selectedVenue]);
+
   const handleFacultySelect = (selectedFaculties) => {
     if (selectedFaculties.length > 0) {
       setFormData(prev => ({
@@ -56,7 +126,23 @@ const [selectedVenue, setSelectedVenue] = useState(null);
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
-
+  const combineDateAndTime = (date, time) => {
+    if (!date || !time) return null;
+    
+    try {
+      const dateStr = date.toISOString().split('T')[0];
+      const timeStr = typeof time === 'string' ? time : time.toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      return new Date(`${dateStr}T${timeStr}`).toISOString();
+    } catch (error) {
+      console.error('Error combining date and time:', error);
+      return null;
+    }
+  };
   const handleDateChange = (name) => (date) => {
     setFormData(prev => ({ ...prev, [name]: date }));
   };
@@ -117,6 +203,10 @@ const [selectedVenue, setSelectedVenue] = useState(null);
       setError('Please select at least one student');
       return false;
     }
+    if (!venueAvailability.available) {
+      setError('Selected venue is not available during the chosen time slot');
+      return false;
+    }
     return true;
   };
 
@@ -137,7 +227,7 @@ const [selectedVenue, setSelectedVenue] = useState(null);
       // Format dates as YYYY-MM-DD without timezone conversion
       const formattedStartDate = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
       const formattedEndDate = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
-  
+
       const formattedData = {
         skillName: formData.skillName,
         facultyIncharge: formData.facultyIncharge,
@@ -156,8 +246,8 @@ const [selectedVenue, setSelectedVenue] = useState(null);
         location: formData.location,
         priority: formData.priority,
         studentEmails: formData.studentEmails,
-        venueId: selectedVenue?.id || null, // Add venue ID to the submission
-        venueCapacity: selectedVenue?.capacity || null // Add venue capacity
+        venueId: selectedVenue?.id || null,
+        venueCapacity: selectedVenue?.capacity || null
       };
       
       if (requestId) {
@@ -184,6 +274,7 @@ const [selectedVenue, setSelectedVenue] = useState(null);
       setLoading(false);
     }
   };
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Paper elevation={3} sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
@@ -283,33 +374,39 @@ const [selectedVenue, setSelectedVenue] = useState(null);
             </Grid>
             
             <Grid item xs={12}>
-  <TextField 
-    fullWidth 
-    label="Location" 
-    name="location" 
-    value={formData.location} 
-    onChange={handleChange} 
-    required 
-    InputProps={{
-      endAdornment: (
-        <InputAdornment position="end">
-          <IconButton 
-            onClick={() => setOpenVenueDialog(true)}
-            sx={{ 
-              backgroundColor: 'lightgray',
-              borderRadius: '4px',
-              '&:hover': {
-                backgroundColor: 'darkgray'
-              }
-            }}
-          >
-            <AddIcon />
-          </IconButton>
-        </InputAdornment>
-      ),
-    }}
-  />
-</Grid>
+              <TextField 
+                fullWidth 
+                label="Location" 
+                name="location" 
+                value={formData.location} 
+                onChange={handleChange} 
+                required 
+                error={!venueAvailability.available}
+                helperText={
+                  !venueAvailability.available 
+                    ? "This venue is already booked during the selected time period" 
+                    : ""
+                }
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton 
+                        onClick={() => setOpenVenueDialog(true)}
+                        sx={{ 
+                          backgroundColor: 'lightgray',
+                          borderRadius: '4px',
+                          '&:hover': {
+                            backgroundColor: 'darkgray'
+                          }
+                        }}
+                      >
+                        <AddIcon />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
             
             <Grid item xs={12}>
               <Typography variant="subtitle1" sx={{ mb: 1 }}>Priority:</Typography>
@@ -415,11 +512,24 @@ const [selectedVenue, setSelectedVenue] = useState(null);
         open={openFacultyDialog} 
         onClose={handleFacultySelect}
       />
+      
       {/* Venue Selection Dialog */}
-<Add_venue_popup 
+      <Add_venue_popup 
   open={openVenueDialog} 
   onClose={handleVenueSelect}
+  startDateTime={
+    formData.startDate && formData.fromTime 
+      ? combineDateAndTime(formData.startDate, formData.fromTime)
+      : null
+  }
+  endDateTime={
+    formData.endDate && formData.toTime 
+      ? combineDateAndTime(formData.endDate, formData.toTime)
+      : null
+  }
 />
+
+
     </LocalizationProvider>
   );
 };

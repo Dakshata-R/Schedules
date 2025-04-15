@@ -54,8 +54,19 @@ const Infra = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState([]);
   const [errors, setErrors] = useState({});
-  const [basicData, setBasicData] = useState({});
+  const [basicData, setBasicData] = useState({
+    uniqueId: '',
+    venueName: '',
+    location: '',
+    priority: '',
+    primaryPurpose: '',
+    responsiblePersons: [],
+    image: null
+  });
   const [venueTypeData, setVenueTypeData] = useState({
+    capacity: '',
+    floor: '',
+    ventilationType: '',
     accessibilityOptions: [],
   });
   const [facilityData, setFacilityData] = useState({
@@ -65,13 +76,11 @@ const Infra = () => {
     selectedFacilities: [],
     selectedUsers: [],
   });
-  const [loading, setLoading] = useState(false);
-  const [showContent, setShowContent] = useState(false);
   const [combinedData, setCombinedData] = useState([]);
   const [showTable, setShowTable] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("All");
-  const [priorityFilter, setPriorityFilter] = useState("All"); // New state for priority filter
+  const [priorityFilter, setPriorityFilter] = useState("All");
   const [page, setPage] = useState(1);
   const rowsPerPage = 7;
 
@@ -83,13 +92,30 @@ const Infra = () => {
     try {
       const response = await fetch('http://localhost:8000/api/fetch-combined-data');
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
-      const data = await response.json();
-      setVenues(data);
+      const { data } = await response.json();
+      
+      if (Array.isArray(data)) {
+        // Ensure all JSON fields are properly parsed
+        const parsedData = data.map(item => ({
+          ...item,
+          responsible_persons: Array.isArray(item.responsible_persons) 
+            ? item.responsible_persons 
+            : JSON.parse(item.responsible_persons || "[]"),
+          assigned_users: Array.isArray(item.assigned_users)
+            ? item.assigned_users
+            : JSON.parse(item.assigned_users || "[]")
+        }));
+        setCombinedData(parsedData);
+      } else {
+        console.error('API data is not an array:', data);
+        setCombinedData([]);
+      }
     } catch (error) {
       console.error('Error fetching combined data:', error);
-      // Handle error appropriately
+      setCombinedData([]);
     }
   };
 
@@ -126,82 +152,69 @@ const Infra = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSaveAndNext = async () => {
+  const handleNext = async () => {
     if (validateStep()) {
-      setLoading(true);
       try {
-        let response;
-        let basicId = basicData.id; // Get basicId if it exists (for subsequent steps)
-  
-        if (activeStep === 0) {
+        if (activeStep === steps.length - 1) {
           const formData = new FormData();
-          formData.append("uniqueId", basicData.uniqueId);
-          formData.append("venueName", basicData.venueName);
-          formData.append("location", basicData.location);
-          formData.append("priority", basicData.priority);
-          formData.append("primaryPurpose", basicData.primaryPurpose);
-          formData.append("responsiblePersons", JSON.stringify(basicData.responsiblePersons));
+          formData.append('unique_id', basicData.uniqueId);
+          formData.append('venue_name', basicData.venueName);
+          formData.append('location', basicData.location);
+          formData.append('priority', basicData.priority);
+          formData.append('primary_purpose', basicData.primaryPurpose);
+          formData.append('responsible_persons', JSON.stringify(basicData.responsiblePersons));
+          
+          // Venue type data
+          formData.append('capacity', venueTypeData.capacity);
+          formData.append('floor', venueTypeData.floor);
+          formData.append('maintenance_frequency', JSON.stringify(venueTypeData.maintenanceFrequency || []));
+          formData.append('usage_frequency', JSON.stringify(venueTypeData.usageFrequency || []));
+          formData.append('ventilation_type', venueTypeData.ventilationType);
+          formData.append('accessibility_options', JSON.stringify(venueTypeData.accessibilityOptions));
+          
+          // Facility data
+          formData.append('facilities', JSON.stringify(facilityData.facilities));
+          formData.append('selected_facilities', JSON.stringify(facilityData.selectedFacilities));
+          formData.append('assigned_users', JSON.stringify(facilityData.assignedUsers || []));
+          
           if (basicData.image) {
-            formData.append("image", basicData.image);
+            formData.append('image', basicData.image);
           }
   
-          response = await fetch("http://localhost:8000/api/save-basic", {
+          // Debug: Log form data before sending
+          for (let [key, value] of formData.entries()) {
+            console.log(key, value);
+          }
+  
+          const saveResponse = await fetch("http://localhost:8000/api/save-infrastructure", {
             method: "POST",
             body: formData,
           });
-          
-          const result = await response.json();
-          basicId = result.basicId; // Store the basicId for next steps
-          setBasicData(prev => ({ ...prev, id: basicId })); // Update state with the ID
-        } 
-        else if (activeStep === 1) {
-          const payload = {
-            basicId,
-            ...venueTypeData,
-            accessibilityOptions: venueTypeData.accessibilityOptions || [],
-          };
   
-          response = await fetch("http://localhost:8000/api/save-venue-type", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-        } 
-        else if (activeStep === 2) {
-          const payload = {
-            basicId,
-            roles: facilityData.accessibilityOptions || [],
-            facilities: facilityData.facilities || [],
-            selectedFacilities: facilityData.selectedFacilities || []
-          };
-  
-          response = await fetch("http://localhost:8000/api/save-facility", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-        }
-  
-        if (response.ok) {
-          if (activeStep === steps.length - 1) {
-            setShowContent(false);
-            setShowTable(true);
-            fetchCombinedData();
-          } else {
-            setActiveStep((prevStep) => prevStep + 1);
-            setCompletedSteps((prevCompleted) => [...prevCompleted, activeStep]);
+          if (!saveResponse.ok) {
+            const errorData = await saveResponse.json().catch(() => ({}));
+            throw new Error(
+              errorData.message || 
+              `Failed to save infrastructure (Status: ${saveResponse.status})`
+            );
           }
+  
+          const responseData = await saveResponse.json();
+          console.log('Save successful:', responseData);
+          
+          setShowTable(true);
+          fetchCombinedData();
         } else {
-          const error = await response.text();
-          console.error("Failed to save data:", error);
+          setActiveStep((prevStep) => prevStep + 1);
+          setCompletedSteps((prevCompleted) => [...prevCompleted, activeStep]);
         }
       } catch (error) {
         console.error("Error saving data:", error);
-      } finally {
-        setLoading(false);
+        alert(`Save failed: ${error.message}`);
       }
     }
   };
+
 
   const handleBack = () => {
     setActiveStep((prevStep) => prevStep - 1);
@@ -220,16 +233,6 @@ const Infra = () => {
     setPriorityFilter(event.target.value);
   };
 
-  const handleCreate = () => {
-    console.log("Create button clicked");
-    // Add logic to handle create functionality
-  };
-
-  const handleDraft = () => {
-    console.log("Draft button clicked");
-    // Add logic to save as draft
-  };
-
   const handlePageChange = (newPage) => {
     setPage(newPage);
   };
@@ -240,8 +243,7 @@ const Infra = () => {
         method: "DELETE",
       });
       if (response.ok) {
-        // Remove the row from the frontend
-        setCombinedData((prevData) => prevData.filter((row) => row.uniqueId !== uniqueId));
+        setCombinedData((prevData) => prevData.filter((row) => row.unique_id !== uniqueId));
       } else {
         console.error("Failed to delete row");
       }
@@ -251,10 +253,9 @@ const Infra = () => {
   };
 
   const filteredData = combinedData.filter((row) => {
-    const matchesSearch = row.venueName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === "All" || row.category === filterCategory;
+    const matchesSearch = row.venue_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPriority = priorityFilter === "All" || row.priority === priorityFilter;
-    return matchesSearch && matchesCategory && matchesPriority;
+    return matchesSearch && matchesPriority;
   });
 
   const paginatedData = filteredData.slice((page - 1) * rowsPerPage, page * rowsPerPage);
@@ -273,56 +274,8 @@ const Infra = () => {
         marginTop: "20px",
       }}
     >
-      {!showContent && (
-        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-          <Button
-            variant="contained"
-            onClick={() => {
-              setShowContent(true);
-              setShowTable(false);
-            }}
-            sx={{
-              backgroundColor: "#4caf50",
-              color: "white",
-              textTransform: "none",
-              "&:hover": { backgroundColor: "#45a049" },
-            }}
-          >
-            +Infrastructure
-          </Button>
-        </Box>
-      )}
-
-      {showContent && (
+      {!showTable && (
         <>
-          {/* Create and Draft Buttons at the Top Right Corner */}
-          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginBottom: "20px" }}>
-            <Button
-              variant="contained"
-              onClick={handleDraft}
-              sx={{
-                backgroundColor: "#f0f0f0",
-                color: "black",
-                textTransform: "none",
-                "&:hover": { backgroundColor: "#d0d0d0" },
-              }}
-            >
-              Draft
-            </Button>
-            <Button
-              variant="contained"
-              onClick={handleCreate}
-              sx={{
-                backgroundColor: "#4caf50",
-                color: "white",
-                textTransform: "none",
-                "&:hover": { backgroundColor: "#45a049" },
-              }}
-            >
-              Create
-            </Button>
-          </Box>
-
           <Stepper alternativeLabel activeStep={activeStep} sx={{ width: "100%", marginBottom: "20px" }}>
             {steps.map((label, index) => (
               <Step key={label} onClick={() => handleStepClick(index)} sx={{ cursor: "pointer" }}>
@@ -342,7 +295,7 @@ const Infra = () => {
           </Stepper>
 
           <Box sx={{ marginTop: "20px" }}>
-            {activeStep === 0 && <Basic errors={errors} setErrors={setErrors} setBasicData={setBasicData} />}
+            {activeStep === 0 && <Basic errors={errors} setErrors={setErrors} setBasicData={setBasicData} basicData={basicData} />}
             {activeStep === 1 && <VenueType errors={errors} setVenueTypeData={setVenueTypeData} venueTypeData={venueTypeData} />}
             {activeStep === 2 && (
               <FacilityType errors={errors} setFacilityData={setFacilityData} facilityData={facilityData} />
@@ -353,7 +306,7 @@ const Infra = () => {
             <Button
               variant="contained"
               onClick={handleBack}
-              disabled={activeStep === 0 || loading}
+              disabled={activeStep === 0}
               sx={{
                 backgroundColor: "#e0e0e0",
                 color: "black",
@@ -363,44 +316,65 @@ const Infra = () => {
             >
               Back
             </Button>
-            {activeStep !== steps.length - 1 && (
-              <Button
-                variant="contained"
-                onClick={handleSaveAndNext}
-                disabled={loading}
-                sx={{
-                  backgroundColor: "#4caf50",
-                  color: "white",
-                  textTransform: "none",
-                  "&:hover": { backgroundColor: "#45a049" },
-                }}
-              >
-                {loading ? "Saving..." : "Save & Next"}
-              </Button>
-            )}
-            {activeStep === steps.length - 1 && (
-              <Button
-                variant="contained"
-                onClick={handleSaveAndNext}
-                disabled={loading}
-                sx={{
-                  backgroundColor: "#4caf50",
-                  color: "white",
-                  textTransform: "none",
-                  "&:hover": { backgroundColor: "#45a049" },
-                }}
-              >
-                {loading ? "Saving..." : "Save"}
-              </Button>
-            )}
+            <Button
+              variant="contained"
+              onClick={handleNext}
+              sx={{
+                backgroundColor: "#4caf50",
+                color: "white",
+                textTransform: "none",
+                "&:hover": { backgroundColor: "#45a049" },
+              }}
+            >
+              {activeStep === steps.length - 1 ? "Save" : "Next"}
+            </Button>
           </Box>
         </>
       )}
 
       {showTable && (
         <>
-          {/* Top Section: Infra List and Chip */}
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            <Button
+              variant="contained"
+              onClick={() => {
+                setShowTable(false);
+                setActiveStep(0);
+                setBasicData({
+                  uniqueId: '',
+                  venueName: '',
+                  location: '',
+                  priority: '',
+                  primaryPurpose: '',
+                  responsiblePersons: [],
+                  image: null
+                });
+                setVenueTypeData({
+                  capacity: '',
+                  floor: '',
+                  ventilationType: '',
+                  accessibilityOptions: [],
+                });
+                setFacilityData({
+                  roles: [],
+                  facilities: [],
+                  accessibilityOptions: [],
+                  selectedFacilities: [],
+                  selectedUsers: [],
+                });
+              }}
+              sx={{
+                backgroundColor: "#4caf50",
+                color: "white",
+                textTransform: "none",
+                "&:hover": { backgroundColor: "#45a049" },
+              }}
+            >
+              +Infrastructure
+            </Button>
+          </Box>
+
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", marginTop: "20px" }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: "16px" }}>
               <Typography variant="h6">Infra list</Typography>
               <Chip
@@ -414,12 +388,10 @@ const Infra = () => {
             </Box>
           </Box>
 
-          {/* Middle Section: Keep track of infrastructure */}
           <Typography variant="h6" sx={{ marginBottom: "20px" }}>
             Keep track of infrastructure
           </Typography>
 
-          {/* View All and Category Section */}
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <Button
@@ -469,53 +441,50 @@ const Infra = () => {
                 }}
               />
               <FormControl sx={{ minWidth: 150 }}>
-  <Select
-    value={priorityFilter}
-    onChange={handlePriorityFilterChange}
-    size="small"
-    sx={{
-      backgroundColor: "#f8f8f8",
-      "& .MuiOutlinedInput-notchedOutline": {
-        border: "none",
-      },
-    }}
-    inputProps={{
-      startAdornment: (
-        <InputAdornment position="start">
-          <FilterListIcon />
-        </InputAdornment>
-      ),
-    }}
-  >
-    <MenuItem value="All">Filter</MenuItem>
-    <MenuItem value="High">High</MenuItem>
-    <MenuItem value="Medium">Medium</MenuItem>
-    <MenuItem value="Low">Low</MenuItem>
-  </Select>
-</FormControl>
+                <Select
+                  value={priorityFilter}
+                  onChange={handlePriorityFilterChange}
+                  size="small"
+                  sx={{
+                    backgroundColor: "#f8f8f8",
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      border: "none",
+                    },
+                  }}
+                  startAdornment={  
+                    <InputAdornment position="start">
+                      <FilterListIcon />
+                    </InputAdornment>
+                  }
+                >
+                  <MenuItem value="All">Filter</MenuItem>
+                  <MenuItem value="High">High</MenuItem>
+                  <MenuItem value="Medium">Medium</MenuItem>
+                  <MenuItem value="Low">Low</MenuItem>
+                </Select>
+              </FormControl>
             </Box>
           </Box>
 
-          {/* Table Section */}
           <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow>
                   <TableCell>Unique ID</TableCell>
                   <TableCell>Venue Name</TableCell>
-                  <TableCell>Location</TableCell>
+                  <TableCell>Venue Type</TableCell>
                   <TableCell>Priority</TableCell>
                   <TableCell>Purpose</TableCell>
-                  <TableCell>Access to Roles</TableCell>
+                  <TableCell>Access to</TableCell>
                   <TableCell>Responsible Persons</TableCell>
-                  
+                  <TableCell>Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                                {paginatedData.map((row) => (
-                  <TableRow key={row.uniqueId}>
-                    <TableCell>{row.uniqueId}</TableCell>
-                    <TableCell>{row.venueName}</TableCell>
+                {paginatedData.map((row) => (
+                  <TableRow key={row.unique_id}>
+                    <TableCell>{row.unique_id}</TableCell>
+                    <TableCell>{row.venue_name}</TableCell>
                     <TableCell>{row.location}</TableCell>
                     <TableCell>
                       <Chip
@@ -536,12 +505,14 @@ const Infra = () => {
                         }}
                       />
                     </TableCell>
-                    <TableCell>{row.primaryPurpose}</TableCell>
+                    <TableCell>{row.primary_purpose}</TableCell>
                     <TableCell>
-                      {row.accessToRoles.slice(0, 2).map((role, index) => (
+                      {row.assigned_users?.slice(0, 2).map((user, index) => (
                         <Chip
                           key={index}
-                          label={role}
+                          label={typeof user === 'object' 
+                            ? `${user.first_name || ''} ${user.last_name || ''}` 
+                            : user}
                           sx={{
                             backgroundColor: "#e3f2fd",
                             color: "#1976d2",
@@ -549,9 +520,9 @@ const Infra = () => {
                           }}
                         />
                       ))}
-                      {row.accessToRoles.length > 2 && (
+                      {row.assigned_users?.length > 2 && (
                         <Chip
-                          label={`+${row.accessToRoles.length - 2}`}
+                          label={`+${row.assigned_users.length - 2}`}
                           sx={{
                             backgroundColor: "#e3f2fd",
                             color: "#1976d2",
@@ -561,22 +532,21 @@ const Infra = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      {Array.isArray(row.responsiblePersons)
-                        ? row.responsiblePersons.join(", ")
-                        : JSON.parse(row.responsiblePersons || "[]").join(", ")}
+                      {Array.isArray(row.responsible_persons)
+                        ? row.responsible_persons.join(", ")
+                        : JSON.parse(row.responsible_persons || "[]").join(", ")}
                     </TableCell>
                     <TableCell>
-  <IconButton onClick={() => handleDelete(row.uniqueId)}>
-    <DeleteIcon sx={{ color: "#1976d2" }} />
-  </IconButton>
-</TableCell>
-                </TableRow>
+                      <IconButton onClick={() => handleDelete(row.unique_id)}>
+                        <DeleteIcon sx={{ color: "#1976d2" }} />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
                 ))}
               </TableBody>
             </Table>
           </TableContainer>
 
-          {/* Pagination Section */}
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "20px" }}>
             <Typography variant="body2" sx={{ color: "grey" }}>
               Page {page} of {totalPages}

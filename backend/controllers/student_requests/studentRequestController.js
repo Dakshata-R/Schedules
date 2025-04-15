@@ -31,7 +31,43 @@ exports.getRequestsWithSlots = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+exports.getFacultySchedule = async (req, res) => {
+  try {
+    const { email } = req.params;
+    
+    // Disable caching
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
 
+    // First get all slots where the faculty is in charge
+    const facultySlots = await Slot.findByFacultyEmail(email);
+
+    // Format the slots for the frontend
+    const formattedSlots = facultySlots.map(slot => {
+      const startDateTime = moment.tz(`${slot.startDate} ${slot.fromTime}`, 'YYYY-MM-DD HH:mm:ss', 'Asia/Kolkata').toISOString();
+      const endDateTime = moment.tz(`${slot.endDate} ${slot.toTime}`, 'YYYY-MM-DD HH:mm:ss', 'Asia/Kolkata').toISOString();
+      
+      return {
+        id: slot.id,
+        title: slot.skillName,
+        start: startDateTime,
+        end: endDateTime,
+        location: slot.location,
+        studentDetails: {
+          student_name: slot.student_name || 'Student',
+          roll_number: slot.roll_number || '',
+          department: slot.department || ''
+        }
+      };
+    });
+
+    res.json(formattedSlots);
+  } catch (error) {
+    console.error('Error fetching faculty schedule:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
 exports.getBookedSlots = async (req, res) => {
   try {
     const { email } = req.params;

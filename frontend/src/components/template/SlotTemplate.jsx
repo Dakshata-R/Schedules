@@ -29,7 +29,8 @@ const SlotTemplate = ({ onCancel }) => {
   const [slotsPerStudent, setSlotsPerStudent] = useState("");
   const [selectedVenues, setSelectedVenues] = useState([]);
   const [selectedFaculties, setSelectedFaculties] = useState([]);
-  
+  const [studentCounts, setStudentCounts] = useState({});
+
   // State for validation
   const [errors, setErrors] = useState({});
   const [openError, setOpenError] = useState(false);
@@ -41,6 +42,47 @@ const SlotTemplate = ({ onCancel }) => {
   const [facultyPopupOpen, setFacultyPopupOpen] = useState(false);
   const [availableFaculties, setAvailableFaculties] = useState([]);
   const [venues, setVenues] = useState([]);
+
+  const [venueValidation, setVenueValidation] = useState({
+    showWarning: false,
+    message: ""
+  });
+
+  const validateVenueCapacity = () => {
+    if (!openTo || selectedVenues.length === 0) return;
+  
+    const totalStudents = studentCounts[openTo] || 0;
+    const totalCapacity = selectedVenues.reduce((sum, venue) => sum + venue.capacity, 0);
+  
+    if (totalStudents === 0) {
+      setVenueValidation({
+        showWarning: false,
+        message: ""
+      });
+      return;
+    }
+  
+    if (totalCapacity < totalStudents) {
+      setVenueValidation({
+        showWarning: true,
+        message: "We recommend you to either choose a larger venue or combine venues to ensure everyone is comfortably accommodated."
+      });
+    } else if (totalCapacity > totalStudents + 3) {
+      setVenueValidation({
+        showWarning: true,
+        message: "We recommend selecting a more appropriately sized venue."
+      });
+    } else {
+      setVenueValidation({
+        showWarning: false,
+        message: ""
+      });
+    }
+  };
+  
+  useEffect(() => {
+    validateVenueCapacity();
+  }, [selectedVenues, studentCounts, openTo]);
 
   // Fetch data on mount
   useEffect(() => {
@@ -71,6 +113,66 @@ const SlotTemplate = ({ onCancel }) => {
     };
     fetchData();
   }, []);
+
+  // In the SlotTemplate.jsx component, add this useEffect hook:
+  useEffect(() => {
+  const fetchStudentsByYear = async () => {
+    try {
+      let yearParam;
+      if (openTo === 'All students') {
+        yearParam = 'All students';
+      } else {
+        yearParam = openTo === 'Final Year' ? '4' : openTo.replace(/\D/g, '');
+      }
+      
+      const response = await axios.get(
+       ` http://localhost:8000/api/student-categories/students-by-year/${yearParam}`
+      );
+      
+      setStudentCounts(prev => ({
+        ...prev,
+        [openTo]: response.data.count
+      }));
+    } catch (error) {
+      // Handle error silently or show a user-friendly message
+    }
+  };
+
+  if (openTo) {
+    fetchStudentsByYear();
+  }
+}, [openTo]);
+
+useEffect(() => {
+  const fetchStudentCount = async () => {
+    try {
+      let yearParam;
+      if (openTo === 'All students') {
+        yearParam = 'All students';
+      } else {
+        yearParam = openTo === 'Final Year' ? '4' : openTo.replace(/\D/g, '');
+      }
+      
+      const response = await axios.get(
+       ` http://localhost:8000/api/student-categories/students-by-year/${yearParam}`
+      );
+      
+      // Display the count in console
+      console.log(`Student count for ${openTo}: ${response.data.count} students`);
+      
+      setStudentCounts(prev => ({
+        ...prev,
+        [openTo]: response.data.count
+      }));
+    } catch (error) {
+      console.error(`Error fetching student count for ${openTo}:`, error);
+    }
+  };
+
+  if (openTo) {
+    fetchStudentCount();
+  }
+}, [openTo]);
 
   // Calculate end date time
   useEffect(() => {
@@ -230,6 +332,11 @@ const SlotTemplate = ({ onCancel }) => {
 
   const handleConfirmSlots = async () => {
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+  
       const slotData = {
         template_name: templateName,
         priority,
@@ -244,14 +351,34 @@ const SlotTemplate = ({ onCancel }) => {
         faculties: selectedFaculties
       };
   
-      const response = await axios.post('http://localhost:8000/api/slot-schedules', slotData);
-      console.log('Slots created successfully:', response.data);
-      return response.data; // Return the response for the preview to handle
+      const response = await axios.post('http://localhost:8000/api/slot-schedules', slotData, {
+        headers: {
+          'Authorization':` Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      return response.data;
     } catch (error) {
       console.error('Error creating slots:', error);
-      setErrorMessage('Failed to create slots. Please try again.');
+      let errorMessage = 'Failed to create slots. Please try again.';
+      
+      if (error.response) {
+        // Handle server response errors
+        if (error.response.data && error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.status === 401) {
+          errorMessage = 'Authentication required. Please log in again.';
+        } else if (error.response.status === 400) {
+          errorMessage = 'Invalid data. Please check your inputs.';
+        }
+      } else if (error.request) {
+        errorMessage = 'No response from server. Please check your connection.';
+      }
+      
+      setErrorMessage(errorMessage);
       setOpenError(true);
-      throw error; // Re-throw the error so the preview can handle it
+      throw error;
     }
   };
 
@@ -503,6 +630,25 @@ const SlotTemplate = ({ onCancel }) => {
             required
           />
         </Box>
+        {venueValidation.showWarning && (
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              color: "red",
+              display: "block",
+              mt: 1,
+              fontStyle: "italic"
+            }}
+          >
+            {venueValidation.message}
+          </Typography>
+        )}
+        {selectedVenues.length > 0 && (
+          <Typography variant="caption" sx={{ display: "block", mt: 1 }}>
+            Total capacity: {selectedVenues.reduce((sum, venue) => sum + venue.capacity, 0)} | 
+            Attendees: {studentCounts[openTo] || "Not specified"}
+          </Typography>
+        )}
       </Box>
 
       {/* Faculty */}
@@ -564,19 +710,7 @@ const SlotTemplate = ({ onCancel }) => {
         >
           Cancel
         </Button>
-        <Button
-          variant="outlined"
-          sx={{
-            color: "red",
-            borderColor: "red",
-            "&:hover": { borderColor: "red", backgroundColor: "rgba(255, 0, 0, 0.04)" },
-            borderRadius: 2,
-            textTransform: "none",
-            padding: "8px 24px",
-          }}
-        >
-          Create Draft
-        </Button>
+        
         <Button
           variant="contained"
           onClick={handlePreview}
@@ -604,8 +738,11 @@ const SlotTemplate = ({ onCancel }) => {
             delete newErrors.venues;
             setErrors(newErrors);
           }
+          validateVenueCapacity();
         }}
         venues={venues}
+        startDateTime={startDateTime}
+        endDateTime={endDateTime}
       />
 
       <Add_Faculty_popup

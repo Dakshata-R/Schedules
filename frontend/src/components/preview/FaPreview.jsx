@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -40,6 +40,35 @@ const FaPreview = ({
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [allVenues, setAllVenues] = useState([]);
+
+  // Fetch all venues when component opens
+  useEffect(() => {
+    const fetchVenues = async () => {
+      try {
+        const response = await axios.get("http://localhost:8000/api/venues");
+        const venuesData = response.data.map(v => ({
+          id: v.venue_id || v.id,
+          name: v.venue_name || v.name,
+          // Fix: Properly check if venue is selected
+          isSelected: selectedVenues.some(sv => 
+            sv.venue_id === v.id || 
+            sv.id === v.id || 
+            sv.venue_name === v.name || 
+            sv.name === v.name
+          )
+        }));
+        setAllVenues(venuesData);
+      } catch (error) {
+        console.error("Error fetching venues:", error);
+        setAllVenues([]);
+      }
+    };
+
+    if (open) {
+      fetchVenues();
+    }
+  }, [open, selectedVenues]);
 
   const handleScroll = (direction) => {
     if (scrollRef.current) {
@@ -114,8 +143,10 @@ const FaPreview = ({
         syllabus_topic: syllabusTopic || null,
         mode: mode,
         venues: mode === "Offline" ? JSON.stringify(selectedVenues) : null,
-        faculties: JSON.stringify(selectedFaculties)
+        faculties: JSON.stringify(selectedFaculties),
+        created_by: localStorage.getItem("userEmail")  // ✅ add this
       };
+      
 
       const response = await axios.post("http://localhost:8000/api/fa-schedules", faData);
       console.log("✅ FA Scheduled:", response.data);
@@ -234,84 +265,82 @@ const FaPreview = ({
 
           {/* Venues List with Arrows (Only for Offline Mode) */}
           {mode === "Offline" && (
-            <Box
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              mb: 3,
+            }}
+          >
+            <IconButton
+              onClick={() => handleScroll("left")}
               sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                mb: 3,
+                backgroundColor: "#f5f5f5",
+                padding: "5px",
+                "&:hover": {
+                  backgroundColor: "#e0e0e0",
+                },
               }}
             >
-              {selectedVenues.length > 0 && (
-                <IconButton
-                  onClick={() => handleScroll("left")}
+              <ArrowBackIosIcon fontSize="small" />
+            </IconButton>
+
+            <Box
+              ref={scrollRef}
+              sx={{
+                display: "flex",
+                gap: 1,
+                flexGrow: 1,
+                overflowX: "auto",
+                scrollBehavior: "smooth",
+                scrollbarWidth: "none",
+                "&::-webkit-scrollbar": {
+                  display: "none",
+                },
+              }}
+            >
+              {allVenues.map((venue, index) => (
+                <Box
+                  key={index}
                   sx={{
-                    backgroundColor: "#f5f5f5",
-                    padding: "5px",
-                    "&:hover": {
-                      backgroundColor: "#e0e0e0",
-                    },
+                    padding: 2,
+                    backgroundColor: venue.isSelected ? "#e0f7fa" : "#f5f5f5",
+                    borderRadius: 2,
+                    textAlign: "center",
+                    minWidth: "120px",
+                    border: "2px solid darkgreen",
+                    flexShrink: 0,
+                    boxShadow: venue.isSelected ? "0 0 8px rgba(0, 128, 0, 0.2)" : "none",
+                    transition: "all 0.3s ease",
                   }}
                 >
-                  <ArrowBackIosIcon fontSize="small" />
-                </IconButton>
-              )}
-
-              <Box
-                ref={scrollRef}
-                sx={{
-                  display: "flex",
-                  gap: 1,
-                  flexGrow: 1,
-                  overflowX: "auto",
-                  scrollBehavior: "smooth",
-                  scrollbarWidth: "none",
-                  "&::-webkit-scrollbar": {
-                    display: "none",
-                  },
-                }}
-              >
-                {selectedVenues.length > 0 ? (
-                  selectedVenues.map((venue, index) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        padding: 2,
-                        backgroundColor: "#e0f7fa",
-                        borderRadius: 2,
-                        textAlign: "center",
-                        minWidth: "120px",
-                        border: "2px solid darkgreen",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                        {venue.venue_name}
-                      </Typography>
-                    </Box>
-                  ))
-                ) : (
-                  <Typography variant="body2" sx={{ color: "text.secondary", alignSelf: "center" }}>
-                    No venues selected
+                  <Typography 
+                    variant="body1" 
+                    sx={{ 
+                      fontWeight: 600,
+                      color: "inherit"
+                    }}
+                  >
+                    {venue.name}
                   </Typography>
-                )}
-              </Box>
-
-              {selectedVenues.length > 0 && (
-                <IconButton
-                  onClick={() => handleScroll("right")}
-                  sx={{
-                    backgroundColor: "#f5f5f5",
-                    padding: "5px",
-                    "&:hover": {
-                      backgroundColor: "#e0e0e0",
-                    },
-                  }}
-                >
-                  <ArrowForwardIosIcon fontSize="small" />
-                </IconButton>
-              )}
+                </Box>
+              ))}
             </Box>
+
+            <IconButton
+              onClick={() => handleScroll("right")}
+              sx={{
+                backgroundColor: "#f5f5f5",
+                padding: "5px",
+                "&:hover": {
+                  backgroundColor: "#e0e0e0",
+                },
+              }}
+            >
+              <ArrowForwardIosIcon fontSize="small" />
+            </IconButton>
+          </Box>
           )}
 
           {/* Slot Timings */}

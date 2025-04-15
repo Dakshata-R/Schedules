@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import Home from "../faculty/facultyhome";
 import Users from "../pages/secondbutton/create";
-import Files from "../faculty/Files";
+import FacultySchedule from "../faculty/files";
 import StudentHome from "../Student/StudentHome";
 import StudentFiles from "../Student/StudentFiles";
 
@@ -31,7 +31,7 @@ const HomeRouting = () => {
         <>
           <Route path="home" element={<Home />} />
           <Route path="create" element={<Users />} />
-          <Route path="files" element={<Files />} />
+          <Route path="files" element={<FacultySchedule />} />
         </>
       )}
     </Routes>

@@ -17,7 +17,6 @@ const healthRoutes = require('./routes/user/healthRoutes');
 const additionalRoutes = require('./routes/user/additionalRoutes');
 const combinedDataRoutes = require('./routes/user/combinedDataRoutes');
 const roleRoutes = require('./routes/role/roleroutes');
-const infraRoutes = require('./routes/infraroutes');
 const studentRoutes = require('./routes/student_request/studentRoutes');
 const studentRequestRoutes = require('./routes/student_request/studentRequestRoutes');
 const FacultyRoutes = require('./routes/student_request/facultyRoutes');
@@ -27,7 +26,11 @@ const venueRoutes = require('./routes/schedules/essentials/add_venueRoutes');
 const studentCategoryRoutes = require('./routes/schedules/essentials/student_categoryRoutes');
 const slotScheduleRoutes = require('./routes/schedules/template/slot_scheduleRoutes');
 const slotBookingRoutes = require('./routes/schedules/template/slotBookingRoutes');
-
+const faScheduleRoutes = require('./routes/schedules/template/fa_scheduleRoutes');
+const infraRoutes = require('./routes/infraroutes');
+const yearDeptRoutes = require('./routes/schedules/essentials/year_deptRoutes');
+const coursesRoutes = require('./routes/schedules/essentials/coursesRoutes');
+const adduserRoutes = require('./routes/adduserRoutes');
 const app = express();
 
 // ======================
@@ -69,7 +72,7 @@ app.use('/api', healthRoutes);
 app.use('/api', additionalRoutes);
 app.use('/api', combinedDataRoutes);
 app.use(roleRoutes);
-app.use(infraRoutes);
+app.use('/api', infraRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/requests', studentRequestRoutes);
 app.use('/api/student-requests', studentRequestRoutes);
@@ -80,7 +83,16 @@ app.use('/api/slots', slotRoutes);
 app.use('/api/venues', venueRoutes);
 app.use('/api/student-categories', studentCategoryRoutes);
 app.use('/api/slot-schedules', slotScheduleRoutes);
-app.use('/api/slot-schedules', slotBookingRoutes);
+
+app.use('/api/slot-bookings', slotBookingRoutes);
+
+app.use('/api/fa-schedules', faScheduleRoutes);
+
+app.use('/api', yearDeptRoutes);
+app.use('/api/courses', coursesRoutes);
+
+app.use('/api/infrastructure', infraRoutes);
+app.use('/', adduserRoutes);
 // ======================
 // 4. Error Handling
 // ======================

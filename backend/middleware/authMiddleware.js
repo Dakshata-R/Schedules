@@ -22,6 +22,7 @@ exports.protect = async (req, res, next) => {
     if (decoded.id === 0 && decoded.role === 'admin') {
       req.user = {
         id: 0,
+        email: 'admin@system',
         role: 'admin'
       };
       return next();

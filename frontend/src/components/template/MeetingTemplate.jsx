@@ -523,23 +523,7 @@ const MeetingTemplate = ({ onCancel }) => {
   </Button>
 
   {/* Create Draft Button */}
-  <Button
-    variant="outlined"
-    onClick={handleSaveDraft} // Save as draft
-    sx={{
-      color: "red",
-      borderColor: "red",
-      "&:hover": {
-        borderColor: "red",
-        backgroundColor: "rgba(255, 0, 0, 0.04)", // Light red background on hover
-      },
-      borderRadius: 2,
-      textTransform: "none", // Prevent uppercase transformation
-      padding: "8px 24px", // Adjust padding for better appearance
-    }}
-  >
-    Create Draft
-  </Button>
+
 
   {/* Preview Button */}
   <Button

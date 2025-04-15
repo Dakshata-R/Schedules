@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -17,22 +17,62 @@ import {
   IconButton,
   InputAdornment,
   Avatar,
+  Tooltip
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import EmptyStateImage from "../../assets/Empty state.png";
 
-const Add_venue_popup = ({ open, onClose }) => {
+const Add_venue_popup = ({ open, onClose, initiallySelectedVenues = [], startDateTime, endDateTime }) => {
   const [venues, setVenues] = useState([]);
-  const [selectedVenues, setSelectedVenues] = useState([]);
+  const [selectedVenues, setSelectedVenues] = useState(initiallySelectedVenues);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState("");
   const [page, setPage] = useState(1);
   const [venueColors, setVenueColors] = useState({});
-  const [loading, setLoading] = useState(false); // Add loading state
-  const [error, setError] = useState(null); // Add error state
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const itemsPerPage = 5;
+  const previousOpenRef = useRef();
+
+  const checkVenueAvailability = async (venueId, startDateTime, endDateTime) => {
+    try {
+      console.log('\n[Frontend] Checking availability for venue:', venueId);
+      console.log('Time range:', startDateTime, 'to', endDateTime);
+      
+      if (!startDateTime || !endDateTime || 
+          isNaN(new Date(startDateTime).getTime()) || 
+          isNaN(new Date(endDateTime).getTime())) {
+        console.log('Invalid or missing dates - skipping check');
+        return {
+          available: true,
+          conflicts: []
+        };
+      }
+  
+      const response = await axios.get(
+        `http://localhost:8000/api/venues/check-availability`,
+        {
+          params: {
+            venueId,
+            startDateTime: new Date(startDateTime).toISOString(),
+            endDateTime: new Date(endDateTime).toISOString()
+          }
+        }
+      );
+      
+      console.log('Availability response:', response.data);
+      return response.data;
+    } catch (err) {
+      console.error('Error in venue availability check:', err);
+      return {
+        available: false,
+        error: err.message,
+        conflicts: []
+      };
+    }
+  };
 
   // Generate a random color for each venue
   const getRandomColor = () => {
@@ -40,27 +80,64 @@ const Add_venue_popup = ({ open, onClose }) => {
     return colors[Math.floor(Math.random() * colors.length)];
   };
 
-  // Add this useEffect hook to fetch venues when component mounts
+  // Track previous open state to detect when popup is reopened
+  useEffect(() => {
+    previousOpenRef.current = open;
+  }, [open]);
+
+  // Fetch venues when component mounts or reopens
   useEffect(() => {
     const fetchVenues = async () => {
       setLoading(true);
       setError(null);
       try {
         const response = await axios.get('http://localhost:8000/api/venues');
-        setVenues(response.data.map(v => ({
+        const fetchedVenues = response.data.map(v => ({
           id: v.venue_id,
           name: v.venue_name,
           capacity: v.capacity,
-          type: v.type || 'Seminar Hall' // Default type if not provided
-        })));
+          type: v.type || 'Seminar Hall'
+        }));
+        
+        // Only check availability if we have valid dates
+        if (startDateTime && endDateTime && 
+            !isNaN(new Date(startDateTime).getTime()) && 
+            !isNaN(new Date(endDateTime).getTime())) {
+          // In the venue fetching useEffect
+          const venuesWithAvailability = await Promise.all(
+            fetchedVenues.map(async venue => {
+              const availability = await checkVenueAvailability(
+                venue.id, 
+                startDateTime, 
+                endDateTime
+              );
+              console.log(`Venue ${venue.name} (${venue.id}) availability:, availability`);
+              return {
+                ...venue,
+                available: availability.available,
+                conflicts: availability.conflicts
+              };
+            })
+          );
+          setVenues(venuesWithAvailability);
+        } else {
+          // If no valid dates, just set all venues as available
+          setVenues(fetchedVenues.map(venue => ({
+            ...venue,
+            available: true
+          })));
+        }
+        
+        // Assign random colors to venues
+        const colors = {};
+        fetchedVenues.forEach((venue) => {
+          colors[venue.id] = getRandomColor();
+        });
+        setVenueColors(colors);
       } catch (error) {
         console.error('Error fetching venues:', error);
-        setError('Failed to load venues');
-        // Fallback data
-        setVenues([
-          { id: 1, name: 'Auditorium', capacity: 10, type: 'Seminar Hall' },
-          { id: 2, name: 'Lab C', capacity: 3, type: 'Lab' }
-        ]);
+        setError('Failed to fetch venues. Please try again.');
+        setVenues([]);
       } finally {
         setLoading(false);
       }
@@ -69,19 +146,12 @@ const Add_venue_popup = ({ open, onClose }) => {
     if (open) {
       fetchVenues();
     }
-  }, [open]);
-
-  // Assign random colors to venues when the component mounts or venues change
-  useEffect(() => {
-    const colors = {};
-    venues.forEach((venue) => {
-      colors[venue.id] = getRandomColor();
-    });
-    setVenueColors(colors);
-  }, [venues]);
+  }, [open, startDateTime, endDateTime]);
 
   // Handle venue selection
   const handleVenueSelection = (venue) => {
+    if (!venue.available) return;
+    
     if (selectedVenues.some(v => v.id === venue.id)) {
       setSelectedVenues(selectedVenues.filter((v) => v.id !== venue.id));
     } else {
@@ -91,7 +161,19 @@ const Add_venue_popup = ({ open, onClose }) => {
 
   // Handle "Assign" button click
   const handleAssign = () => {
-    onClose(selectedVenues); // Pass selected venues back to parent
+    if (selectedVenues.length > 0) {
+      const totalCapacity = selectedVenues.reduce((sum, venue) => sum + venue.capacity, 0);
+      console.log('--- Venue Selection Summary ---');
+      console.log(`Total selected venues: ${selectedVenues.length}`);
+      console.log(`Combined capacity: ${totalCapacity}`);
+      selectedVenues.forEach(venue => {
+        console.log(`- ${venue.name} (Capacity: ${venue.capacity})`);
+      });
+    } else {
+      console.log('No venues were selected');
+    }
+    
+    onClose(selectedVenues);
   };
 
   // Filtered venues based on search and filter
@@ -106,7 +188,7 @@ const Add_venue_popup = ({ open, onClose }) => {
   const paginatedVenues = filteredVenues.slice(startIndex, startIndex + itemsPerPage);
   const totalPages = Math.ceil(filteredVenues.length / itemsPerPage);
   
-  // Generate page numbers (e.g., 1 2 3 ... 10)
+  // Generate page numbers
   const renderPageNumbers = () => {
     const pages = [];
     for (let i = 1; i <= totalPages; i++) {
@@ -131,15 +213,15 @@ const Add_venue_popup = ({ open, onClose }) => {
   return (
     <Dialog
       open={open}
-      onClose={() => onClose([])}
-      maxWidth="xs" // Reduced container width
+      onClose={() => onClose(selectedVenues)} // Pass current selected venues when closing
+      maxWidth="xs"
       fullWidth
       PaperProps={{
         sx: {
           borderRadius: "8px",
-          padding: "5px", // Reduced padding for the entire dialog
-          height: "85vh", // Full height of the viewport
-          overflow: "hidden", // Prevent overflow
+          padding: "5px",
+          height: "85vh",
+          overflow: "hidden",
         },
       }}
     >
@@ -148,15 +230,19 @@ const Add_venue_popup = ({ open, onClose }) => {
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Assign Venue
           </Typography>
-          <IconButton onClick={() => onClose([])} sx={{ color: "red" }}>
+          <IconButton onClick={() => onClose(selectedVenues)} sx={{ color: "red" }}>
             <CloseIcon />
           </IconButton>
         </Box>
+        {startDateTime && endDateTime && (
+          <Typography variant="body2" color="text.secondary">
+            Checking availability from {new Date(startDateTime).toLocaleString()} to {new Date(endDateTime).toLocaleString()}
+          </Typography>
+        )}
       </DialogTitle>
-      <DialogContent sx={{ overflow: "hidden", height: "calc(100vh - 150px)" }}> {/* Adjust height to fit within the dialog */}
+      <DialogContent sx={{ overflow: "hidden", height: "calc(100vh - 150px)" }}>
         {/* Search and Filter Row */}
         <Box sx={{ display: "flex", gap: 2, mb: 2, padding: "5px" }}>
-          {/* Search Bar (75% width) */}
           <TextField
             fullWidth
             placeholder="Search"
@@ -173,7 +259,6 @@ const Add_venue_popup = ({ open, onClose }) => {
               ),
             }}
           />
-          {/* Filter Dropdown (25% width) */}
           <FormControl sx={{ width: "25%" }} size="small">
             <InputLabel>Filter BY</InputLabel>
             <Select
@@ -189,8 +274,22 @@ const Add_venue_popup = ({ open, onClose }) => {
           </FormControl>
         </Box>
 
+        {/* Loading state */}
+        {loading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <Typography>Loading venues...</Typography>
+          </Box>
+        )}
+
+        {/* Error state */}
+        {error && !loading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <Typography color="error">{error}</Typography>
+          </Box>
+        )}
+
         {/* Venue List */}
-        {filteredVenues.length === 0 ? ( // Display empty state if no venues
+        {!loading && !error && filteredVenues.length === 0 ? (
           <Box
             sx={{
               display: "flex",
@@ -199,18 +298,18 @@ const Add_venue_popup = ({ open, onClose }) => {
               justifyContent: "center",
               textAlign: "center",
               gap: 1,
-              height: "100%", // Ensure the container takes full height
-              width: "100%", // Ensure the container takes full width
+              height: "100%",
+              width: "100%",
             }}
           >
             <img
-              src={EmptyStateImage} // Use the empty state image
+              src={EmptyStateImage}
               alt=""
               style={{
-                width: "200px", // Set desired width
-                height: "200px", // Set desired height (same as width for a square)
-                objectFit: "cover", // Ensures the image scales properly
-                borderRadius: "8px", // Optional: Add rounded corners
+                width: "200px",
+                height: "200px",
+                objectFit: "cover",
+                borderRadius: "8px",
               }}
             />
             <Typography variant="body1" sx={{ color: "text.secondary" }}>
@@ -218,106 +317,102 @@ const Add_venue_popup = ({ open, onClose }) => {
             </Typography>
           </Box>
         ) : (
-          <Box>
-            {/* Display the venue list */}
-            {paginatedVenues.map((venue) => (
-              <Box
-                key={venue.id}
-                onClick={() => handleVenueSelection(venue)} // Make the entire box clickable
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  p: 1,
-                  borderBottom: "1px solid #e0e0e0",
-                  borderRadius: "8px", // Rounded corners
-                  backgroundColor: "#f9f9f9",
-                  marginBottom: "8px",
-                  position: "relative",
-                  overflow: "hidden",
-                  cursor: "pointer", // Add pointer cursor to indicate clickability
-                }}
-              >
-                {/* Random colored line on the left */}
-                <Box
-                  sx={{
-                    position: "absolute",
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: "4px",
-                    backgroundColor: venueColors[venue.id], // Use pre-assigned color
-                  }}
-                />
-                {/* Checkbox on the left */}
-                <Checkbox
-                  checked={selectedVenues.includes(venue)}
-                  onChange={() => handleVenueSelection(venue)}
-                  sx={{ color: "darkgreen", "&.Mui-checked": { color: "darkgreen" } }} // Dark green checkbox
-                />
-                {/* Venue Image and Name */}
-                <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexGrow: 1 }}>
-                  <Avatar
-                    src={`https://picsum.photos/50/50?random=${venue.id}`} // Random image for each venue
-                    alt={venue.name}
-                    sx={{ width: 50, height: 50 }}
-                  />
-                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                    {venue.name}
-                  </Typography>
-                </Box>
-                {/* Capacity on the right */}
-                <Typography variant="body2" sx={{ color: "darkgreen" }}> {/* Dark green capacity */}
-                  {venue.capacity}
-                </Typography>
-              </Box>
-            ))}
+          !loading && !error && (
+            <Box>
+              {paginatedVenues.map((venue) => (
+                <Tooltip 
+                  key={venue.id} 
+                  title={!venue.available ? "This venue is already booked during the selected time period" : ""}
+                  placement="left"
+                >
+                  <Box
+                    onClick={() => venue.available && handleVenueSelection(venue)}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      p: 1,
+                      borderBottom: "1px solid #e0e0e0",
+                      borderRadius: "8px",
+                      backgroundColor: venue.available ? "#f9f9f9" : "#f9f9f950",
+                      marginBottom: "8px",
+                      position: "relative",
+                      overflow: "hidden",
+                      cursor: venue.available ? "pointer" : "not-allowed",
+                      opacity: venue.available ? 1 : 0.6,
+                      '&:hover': {
+                        backgroundColor: venue.available ? '#f0f0f0' : '#f9f9f950'
+                      }
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: "4px",
+                        backgroundColor: venueColors[venue.id],
+                      }}
+                    />
+                    <Checkbox
+                      checked={selectedVenues.some(v => v.id === venue.id)}
+                      onChange={() => venue.available && handleVenueSelection(venue)}
+                      disabled={!venue.available}
+                      sx={{ 
+                        color: "darkgreen", 
+                        "&.Mui-checked": { color: "darkgreen" },
+                        "&.Mui-disabled": { color: "rgba(0, 0, 0, 0.26)" }
+                      }}
+                    />
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexGrow: 1 }}>
+                      <Avatar
+                        src={`https://picsum.photos/50/50?random=${venue.id}`}
+                        alt={venue.name}
+                        sx={{ width: 50, height: 50 }}
+                      />
+                      <Box>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {venue.name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                          {venue.type}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                      <Typography variant="body2" sx={{ color: "darkgreen" }}>
+                        Capacity: {venue.capacity}
+                      </Typography>
+                      {!venue.available && (
+                        <Typography variant="caption" sx={{ color: "red" }}>
+                          Booked
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                </Tooltip>
+              ))}
 
-            {/* Display empty state image below the venue when there is only one venue */}
-            {filteredVenues.length === 1 && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  textAlign: "center",
-                  gap: 1,
-                  mt: 2, // Add margin top to separate from the venue list
-                }}
-              >
-                <img
-                  src={EmptyStateImage} // Use the empty state image
-                  alt=""
-                  style={{
-                    width: "200px", // Set desired width
-                    height: "200px", // Set desired height (same as width for a square)
-                    objectFit: "cover", // Ensures the image scales properly
-                    borderRadius: "8px", // Optional: Add rounded corners
-                  }}
-                />
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 0, mb: 0, gap: 1 }}>
+                <Button
+                  onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={page === 1}
+                  sx={{ color: "grey", textTransform: "capitalize" }}
+                >
+                  Previous
+                </Button>
+                {renderPageNumbers()}
+                <Button
+                  onClick={() => setPage((prev) => prev + 1)}
+                  disabled={page === totalPages}
+                  sx={{ color: "grey", textTransform: "capitalize" }}
+                >
+                  Next
+                </Button>
               </Box>
-            )}
-
-            {/* Pagination */}
-            <Box sx={{ display: "flex", justifyContent: "center", mt: 0, mb: 0, gap: 1 }}> {/* Removed margin */}
-              <Button
-                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                disabled={page === 1}
-                sx={{ color: "grey", textTransform: "capitalize" }} // Title case for "Previous"
-              >
-                Previous
-              </Button>
-              {renderPageNumbers()}
-              <Button
-                onClick={() => setPage((prev) => prev + 1)}
-                disabled={page === totalPages}
-                sx={{ color: "grey", textTransform: "capitalize" }} // Title case for "Next"
-              >
-                Next
-              </Button>
             </Box>
-          </Box>
+          )
         )}
       </DialogContent>
       <DialogActions>
@@ -326,14 +421,14 @@ const Add_venue_popup = ({ open, onClose }) => {
             display: "flex",
             justifyContent: "space-between",
             width: "100%",
-            p: 1, // Reduced padding to make it more compact
+            p: 1,
             borderTop: "1px solid #e0e0e0",
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}> {/* Reduced gap */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Button
               onClick={() => setSelectedVenues([])}
-              sx={{ color: "red", textTransform: "capitalize", fontSize: "14px" }} // Title case for "Deselect All"
+              sx={{ color: "red", textTransform: "capitalize", fontSize: "14px" }}
             >
               Deselect All
             </Button>
@@ -346,9 +441,9 @@ const Add_venue_popup = ({ open, onClose }) => {
             onClick={handleAssign}
             disabled={selectedVenues.length === 0}
             sx={{
-              backgroundColor: "darkgreen", // Dark green for "Assign"
+              backgroundColor: "darkgreen",
               color: "white",
-              width: "50%", // Assign button takes 50% of the right side
+              width: "50%",
             }}
           >
             Assign

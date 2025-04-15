@@ -5,84 +5,61 @@ import {
   TextField,
   Button,
   Avatar,
-  Select,
-  MenuItem,
   IconButton,
   Grid,
 } from "@mui/material";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import { IoPersonOutline, IoLocationOutline } from "react-icons/io5"; // Import icons
-import { LiaQuestionCircle } from "react-icons/lia"; // Import question mark icon
-import CloseIcon from "@mui/icons-material/Close"; // Import close icon
-import ImageUploadLabel from "../ImageUploadLabel"; // Import the updated ImageUploadLabel component
+import { IoPersonOutline, IoLocationOutline } from "react-icons/io5";
+import { LiaQuestionCircle } from "react-icons/lia";
+import CloseIcon from "@mui/icons-material/Close";
 
-const Basic = ({ errors, setErrors, setBasicData }) => {
-  const [responsiblePersons, setResponsiblePersons] = useState(["Lab Technician I"]);
+const Basic = ({ errors, setErrors, setBasicData, basicData }) => {
   const [newPerson, setNewPerson] = useState("");
-  const [localBasicData, setLocalBasicData] = useState({
-    uniqueId: "SFB01",
-    venueName: "Sunflower block-basement class-01",
-    location: "Sunflower block",
-    priority: "",
-    primaryPurpose: "Trainings",
-    responsiblePersons: ["Lab Technician I"],
-    image: null, // Add image field to localBasicData
-  });
+  const [accessibilityOptions, setAccessibilityOptions] = useState(
+    basicData?.responsiblePersons || []
+  );
 
   const handleAddPerson = () => {
     if (newPerson.trim() !== "") {
-      const updatedPersons = [...responsiblePersons, newPerson];
-      setResponsiblePersons(updatedPersons);
-      setLocalBasicData({ ...localBasicData, responsiblePersons: updatedPersons });
+      const updatedPersons = [...accessibilityOptions, newPerson];
+      setAccessibilityOptions(updatedPersons);
+      setBasicData(prev => ({
+        ...prev,
+        responsiblePersons: updatedPersons,
+      }));
       setNewPerson("");
+      setErrors(prev => ({ ...prev, responsiblePersons: "" }));
     }
   };
 
   const handleDeletePerson = (index) => {
-    const updatedPersons = responsiblePersons.filter((_, i) => i !== index);
-    setResponsiblePersons(updatedPersons);
-    setLocalBasicData({ ...localBasicData, responsiblePersons: updatedPersons });
+    const updatedPersons = accessibilityOptions.filter((_, i) => i !== index);
+    setAccessibilityOptions(updatedPersons);
+    setBasicData(prev => ({
+      ...prev,
+      responsiblePersons: updatedPersons,
+    }));
   };
 
-  const avatarColors = ["#f44336", "#2196f3", "#4caf50", "#ff9800", "#9c27b0"]; // Different colors for avatars
+  const avatarColors = ["#f44336", "#2196f3", "#4caf50", "#ff9800", "#9c27b0"];
 
   const handleChange = (field, value) => {
-    setLocalBasicData({ ...localBasicData, [field]: value });
-    setBasicData({ ...localBasicData, [field]: value });
-    setErrors({ ...errors, [field]: "" }); // Clear the error when the field is updated
+    setBasicData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    setErrors(prev => ({ ...prev, [field]: "" }));
   };
 
-  const handleImageChange = (file) => {
-    setLocalBasicData({ ...localBasicData, image: file });
-    setBasicData({ ...localBasicData, image: file });
-    setErrors({ ...errors, image: "" });
-  };
-  
   return (
     <Box sx={{ width: "100%", padding: "20px" }}>
-      {/* Header Section with Bulk Upload Button */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 4, gap: 5 }}>
         <Typography variant="h5" sx={{ fontFamily: "Poppins, sans-serif", fontWeight: "bold" }}>
           Basic Details
         </Typography>
-       
-        <Typography 
-          variant="h6" 
-          sx={{ 
-            fontFamily: "Poppins, sans-serif", 
-            fontWeight: "bold", 
-            marginRight: "168px" // Adjusted marginRight to move the text 1 inch to the right
-          }}
-        >
-          Add Venue Image
-        </Typography>
       </Box>
 
-      {/* Two-Column Layout */}
       <Grid container spacing={4}>
-        {/* Left Column (Form Fields) */}
         <Grid item xs={12} md={8}>
-          {/* Unique ID Section */}
           <Box sx={{ marginBottom: "20px" }}>
             <Typography variant="h6" sx={{ fontFamily: "Poppins, sans-serif", fontWeight: "bold" }}>
               Unique ID
@@ -91,7 +68,7 @@ const Basic = ({ errors, setErrors, setBasicData }) => {
               fullWidth
               variant="outlined"
               placeholder="Enter Unique ID"
-              value={localBasicData.uniqueId}
+              value={basicData.uniqueId || ""}
               onChange={(e) => handleChange("uniqueId", e.target.value)}
               error={!!errors.uniqueId}
               helperText={errors.uniqueId}
@@ -107,57 +84,56 @@ const Basic = ({ errors, setErrors, setBasicData }) => {
                   </Box>
                 ),
                 sx: {
-                  backgroundColor: "#f5f6fa", // Grey background
-                  borderRadius: "8px", // Rounded corners
+                  backgroundColor: "#f5f6fa",
+                  borderRadius: "8px",
                 },
               }}
-              sx={{ width: "100%", marginTop: "10px" }} // Increased width
+              sx={{ width: "100%", marginTop: "10px" }}
             />
             <Typography variant="body2" sx={{ fontFamily: "Poppins, sans-serif", color: "gray", marginTop: "5px" }}>
               Description text
             </Typography>
           </Box>
 
-          {/* Venue Name Section */}
           <Box sx={{ marginBottom: "20px" }}>
             <Typography variant="h6" sx={{ fontFamily: "Poppins, sans-serif", fontWeight: "bold" }}>
               Venue Name
             </Typography>
-            <Select
+            <TextField
               fullWidth
               variant="outlined"
-              value={localBasicData.venueName}
+              placeholder="Enter Venue Name"
+              value={basicData.venueName || ""}
               onChange={(e) => handleChange("venueName", e.target.value)}
               error={!!errors.venueName}
-              sx={{
-                width: "100%",
-                marginTop: "10px",
-                backgroundColor: "#f5f6fa", // Grey background
-                borderRadius: "8px", // Rounded corners
+              helperText={errors.venueName}
+              InputProps={{
+                startAdornment: (
+                  <Box sx={{ display: "flex", alignItems: "center", mr: 1 }}>
+                    <IoPersonOutline size={20} />
+                  </Box>
+                ),
+                sx: {
+                  backgroundColor: "#f5f6fa",
+                  borderRadius: "8px",
+                },
               }}
-            >
-              <MenuItem value="AS Block">AS Block</MenuItem>
-              <MenuItem value="IB Block">IB Block</MenuItem>
-              <MenuItem value="Mechanical Block">Mechanical Block</MenuItem>
-              <MenuItem value="Aero Block">Aero Block</MenuItem>
-              <MenuItem value="Learning Center">Learning Center</MenuItem>
-              <MenuItem value="Special Lab">Special Lab</MenuItem>
-            </Select>
+              sx={{ width: "100%", marginTop: "10px" }}
+            />
             <Typography variant="body2" sx={{ fontFamily: "Poppins, sans-serif", color: "gray", marginTop: "5px" }}>
               Description text
             </Typography>
           </Box>
 
-          {/* Location Section */}
           <Box sx={{ marginBottom: "20px" }}>
             <Typography variant="h6" sx={{ fontFamily: "Poppins, sans-serif", fontWeight: "bold" }}>
-              Location
+              Venue Type
             </Typography>
             <TextField
               fullWidth
               variant="outlined"
               placeholder="Enter Location"
-              value={localBasicData.location}
+              value={basicData.location || ""}
               onChange={(e) => handleChange("location", e.target.value)}
               error={!!errors.location}
               helperText={errors.location}
@@ -173,18 +149,17 @@ const Basic = ({ errors, setErrors, setBasicData }) => {
                   </Box>
                 ),
                 sx: {
-                  backgroundColor: "#f5f6fa", // Grey background
-                  borderRadius: "8px", // Rounded corners
+                  backgroundColor: "#f5f6fa",
+                  borderRadius: "8px",
                 },
               }}
-              sx={{ width: "100%", marginTop: "10px" }} // Increased width
+              sx={{ width: "100%", marginTop: "10px" }}
             />
             <Typography variant="body2" sx={{ fontFamily: "Poppins, sans-serif", color: "gray", marginTop: "5px" }}>
               Description text
             </Typography>
           </Box>
 
-          {/* Priority Section */}
           <Box sx={{ marginBottom: "20px" }}>
             <Typography variant="h6" sx={{ fontFamily: "Poppins, sans-serif", fontWeight: "bold" }}>
               Priority
@@ -194,9 +169,9 @@ const Basic = ({ errors, setErrors, setBasicData }) => {
                 variant="outlined"
                 onClick={() => handleChange("priority", "High")}
                 sx={{
-                  color: localBasicData.priority === "High" ? "white" : "red",
+                  color: basicData?.priority === "High" ? "white" : "red",
                   borderColor: "red",
-                  backgroundColor: localBasicData.priority === "High" ? "red" : "transparent",
+                  backgroundColor: basicData?.priority === "High" ? "red" : "transparent",
                   "&:hover": { borderColor: "red", backgroundColor: "rgba(255, 0, 0, 0.1)" },
                 }}
               >
@@ -206,9 +181,9 @@ const Basic = ({ errors, setErrors, setBasicData }) => {
                 variant="outlined"
                 onClick={() => handleChange("priority", "Medium")}
                 sx={{
-                  color: localBasicData.priority === "Medium" ? "white" : "orange",
+                  color: basicData?.priority === "Medium" ? "white" : "orange",
                   borderColor: "orange",
-                  backgroundColor: localBasicData.priority === "Medium" ? "orange" : "transparent",
+                  backgroundColor: basicData?.priority === "Medium" ? "orange" : "transparent",
                   "&:hover": { borderColor: "orange", backgroundColor: "rgba(255, 165, 0, 0.1)" },
                 }}
               >
@@ -218,9 +193,9 @@ const Basic = ({ errors, setErrors, setBasicData }) => {
                 variant="outlined"
                 onClick={() => handleChange("priority", "Low")}
                 sx={{
-                  color: localBasicData.priority === "Low" ? "white" : "green",
+                  color: basicData?.priority === "Low" ? "white" : "green",
                   borderColor: "green",
-                  backgroundColor: localBasicData.priority === "Low" ? "green" : "transparent",
+                  backgroundColor: basicData?.priority === "Low" ? "green" : "transparent",
                   "&:hover": { borderColor: "green", backgroundColor: "rgba(0, 128, 0, 0.1)" },
                 }}
               >
@@ -234,35 +209,36 @@ const Basic = ({ errors, setErrors, setBasicData }) => {
             )}
           </Box>
 
-          {/* Primary Purpose Section */}
           <Box sx={{ marginBottom: "20px" }}>
             <Typography variant="h6" sx={{ fontFamily: "Poppins, sans-serif", fontWeight: "bold" }}>
               Primary Purpose
             </Typography>
-            <Select
+            <TextField
               fullWidth
               variant="outlined"
-              value={localBasicData.primaryPurpose}
+              placeholder="Enter Primary Purpose"
+              value={basicData.primaryPurpose || ""}
               onChange={(e) => handleChange("primaryPurpose", e.target.value)}
               error={!!errors.primaryPurpose}
-              sx={{
-                width: "100%",
-                marginTop: "10px",
-                backgroundColor: "#f5f6fa", // Grey background
-                borderRadius: "8px", // Rounded corners
+              helperText={errors.primaryPurpose}
+              InputProps={{
+                startAdornment: (
+                  <Box sx={{ display: "flex", alignItems: "center", mr: 1 }}>
+                    <IoPersonOutline size={20} />
+                  </Box>
+                ),
+                sx: {
+                  backgroundColor: "#f5f6fa",
+                  borderRadius: "8px",
+                },
               }}
-            >
-              <MenuItem value="Self Learning">Self Learning</MenuItem>
-              <MenuItem value="Training">Training</MenuItem>
-              <MenuItem value="Placement">Placement</MenuItem>
-              <MenuItem value="Lunch">Lunch</MenuItem>
-            </Select>
+              sx={{ width: "100%", marginTop: "10px" }}
+            />
             <Typography variant="body2" sx={{ fontFamily: "Poppins, sans-serif", color: "gray", marginTop: "5px" }}>
               Description text
             </Typography>
           </Box>
 
-          {/* Responsible Person Section */}
           <Box sx={{ marginBottom: "20px" }}>
             <Typography variant="h6" sx={{ fontFamily: "Poppins, sans-serif", fontWeight: "bold" }}>
               Responsible Person
@@ -290,16 +266,15 @@ const Basic = ({ errors, setErrors, setBasicData }) => {
                     </Button>
                   ),
                   sx: {
-                    backgroundColor: "#f5f6fa", // Grey background
-                    borderRadius: "8px", // Rounded corners
+                    backgroundColor: "#f5f6fa",
+                    borderRadius: "8px",
                   },
                 }}
-                sx={{ width: "100%" }} // Increased width
+                sx={{ width: "100%" }}
               />
             </Box>
-            {/* Display Avatars with Close Icons */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, marginTop: "10px" }}>
-              {responsiblePersons.slice(0, 2).map((person, index) => (
+              {accessibilityOptions.slice(0, 2).map((person, index) => (
                 <Box
                   key={index}
                   sx={{
@@ -307,7 +282,6 @@ const Basic = ({ errors, setErrors, setBasicData }) => {
                     display: "inline-flex",
                   }}
                 >
-                  {/* Avatar */}
                   <Avatar
                     sx={{
                       backgroundColor: avatarColors[index % avatarColors.length],
@@ -315,12 +289,11 @@ const Basic = ({ errors, setErrors, setBasicData }) => {
                       width: 40,
                       height: 40,
                     }}
-                    onClick={() => alert(person)} // Display name on click
+                    onClick={() => alert(person)}
                   >
                     {person.charAt(0)}
                   </Avatar>
 
-                  {/* Close Icon in a Small Circle at Bottom-Right */}
                   <IconButton
                     size="small"
                     sx={{
@@ -342,7 +315,7 @@ const Basic = ({ errors, setErrors, setBasicData }) => {
                   </IconButton>
                 </Box>
               ))}
-              {responsiblePersons.length > 2 && (
+              {accessibilityOptions.length > 2 && (
                 <Box sx={{ position: "relative", display: "inline-flex" }}>
                   <Avatar
                     sx={{
@@ -352,10 +325,9 @@ const Basic = ({ errors, setErrors, setBasicData }) => {
                       height: 40,
                     }}
                   >
-                    +{responsiblePersons.length - 2}
+                    +{accessibilityOptions.length - 2}
                   </Avatar>
 
-                  {/* Close Icon in a Small Circle at Bottom-Right */}
                   <IconButton
                     size="small"
                     sx={{
@@ -383,18 +355,6 @@ const Basic = ({ errors, setErrors, setBasicData }) => {
                 {errors.responsiblePersons}
               </Typography>
             )}
-          </Box>
-        </Grid>
-
-        {/* Right Column (Add Venue Image) */}
-        <Grid item xs={12} md={4}>
-          <Box sx={{ marginBottom: "10px" }}>
-            {/* Replace the existing image upload section with the ImageUploadLabel component */}
-            <ImageUploadLabel
-              onFileChange={handleImageChange}
-              error={!!errors.image}
-              helperText={errors.image}
-            />
           </Box>
         </Grid>
       </Grid>

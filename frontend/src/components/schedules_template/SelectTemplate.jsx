@@ -28,7 +28,7 @@ import examIcon from "../../assets/examschedule.png";
 
 const templates = [
   { name: "Slot Creation", icon: slotIcon },
-  { name: "Skill Schedule", icon: skillIcon },
+  
   { name: "Meeting Schedule", icon: meetingIcon },
   { name: "Fa Schedule" , icon: examIcon},
 ];

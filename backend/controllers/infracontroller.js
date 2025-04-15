@@ -1,62 +1,95 @@
-const infraModel = require('../models/inframodals');
+const Infrastructure = require('../models/inframodel');
+const Venue = require('../models/venuemodel');
 
-exports.saveBasic = (req, res) => {
-  const { uniqueId, venueName, location, priority, primaryPurpose, responsiblePersons } = req.body;
-  const imagePath = req.file ? req.file.path : '';
+exports.saveInfrastructure = async (req, res) => {
+  try {
+    // Extract all fields from the request
+    const infraData = {
+      unique_id: req.body.unique_id,
+      venue_name: req.body.venue_name,
+      location: req.body.location,
+      priority: req.body.priority,
+      primary_purpose: req.body.primary_purpose,
+      responsible_persons: req.body.responsible_persons,
+      capacity: req.body.capacity,
+      floor: req.body.floor,
+      maintenance_frequency: req.body.maintenance_frequency,
+      usage_frequency: req.body.usage_frequency,
+      ventilation_type: req.body.ventilation_type,
+      accessibility_options: req.body.accessibility_options,
+      facilities: req.body.facilities,
+      selected_facilities: req.body.selected_facilities,
+      assigned_users: req.body.assigned_users,
+      image: req.file ? req.file.buffer.toString('base64') : null
+    };
 
-  infraModel.saveBasic(uniqueId, venueName, location, priority, primaryPurpose, responsiblePersons, imagePath, (err, basicId) => {
-    if (err) {
-      console.error('Error saving basic data:', err);
-      return res.status(500).send('Error saving basic data');
+    // Validate required fields
+    if (!infraData.unique_id || !infraData.venue_name || !infraData.location) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required fields' 
+      });
     }
-    res.status(200).json({ basicId, message: 'Basic data saved successfully' });
-  });
+
+    // Save infrastructure data
+    const id = await Infrastructure.create(infraData);
+    
+    // Determine venue type based on venue_name
+    let venueType = 'Seminar Hall'; // default
+    const venueNameLower = infraData.venue_name.toLowerCase();
+    
+    if (venueNameLower.includes('lab')) {
+      venueType = 'Lab';
+    } else if (venueNameLower.includes('conference') || venueNameLower.includes('meeting')) {
+      venueType = 'Conference Room';
+    } else if (venueNameLower.includes('auditorium')) {
+      venueType = 'Auditorium';
+    }
+
+    // Save to venues table without unique_id
+    await Venue.create({
+      venue_name: infraData.venue_name,
+      capacity: infraData.capacity,
+      type: venueType
+    });
+
+    res.status(201).json({ success: true, id });
+  } catch (error) {
+    console.error('Error saving infrastructure:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to save infrastructure',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
 };
 
-exports.saveVenueType = (req, res) => {
-  const { basicId, capacity, floor, maintenanceFrequency, usageFrequency, accessibilityOptions, ventilationType } = req.body;
-
-  infraModel.saveVenueType(basicId, capacity, floor, maintenanceFrequency, usageFrequency, accessibilityOptions, ventilationType, (err, result) => {
-    if (err) {
-      console.error('Error saving venue type data:', err);
-      return res.status(500).send('Error saving venue type data');
-    }
-    res.status(200).send('Venue type data saved successfully');
-  });
+exports.getAllInfrastructure = async (req, res) => {
+  try {
+    const infraList = await Infrastructure.getAll();
+    res.status(200).json({ success: true, data: infraList });
+  } catch (error) {
+    console.error('Error fetching infrastructure:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to fetch infrastructure',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
 };
 
-exports.saveFacility = (req, res) => {
-  const { basicId, accessibilityOptions, facilities, selectedFacilities } = req.body;
-
-  infraModel.saveFacility(basicId, accessibilityOptions, facilities, selectedFacilities, (err, result) => {
-    if (err) {
-      console.error('Error saving facility data:', err);
-      return res.status(500).send('Error saving facility data');
+exports.deleteInfrastructure = async (req, res) => {
+  try {
+    const { uniqueId } = req.params;
+    const affectedRows = await Infrastructure.deleteByUniqueId(uniqueId);
+    
+    if (affectedRows === 0) {
+      return res.status(404).json({ success: false, error: 'Infrastructure not found' });
     }
-    res.status(200).send('Facility data saved successfully');
-  });
-};
-
-exports.fetchCombinedData = (req, res) => {
-  infraModel.fetchCombinedData((err, results) => {
-    if (err) {
-      console.error('Error fetching combined data:', err);
-      res.status(500).send('Error fetching combined data');
-      return;
-    }
-    res.status(200).json(results);
-  });
-};
-
-exports.deleteRow = (req, res) => {
-  const { uniqueId } = req.params;
-
-  infraModel.deleteRow(uniqueId, (err, result) => {
-    if (err) {
-      console.error('Error deleting row:', err);
-      res.status(500).send('Failed to delete row');
-      return;
-    }
-    res.status(200).send('Row deleted successfully');
-  });
+    
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Error deleting infrastructure:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete infrastructure' });
+  }
 };

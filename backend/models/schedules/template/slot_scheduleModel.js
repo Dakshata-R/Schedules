@@ -5,7 +5,7 @@ class SlotSchedule {
   static async create(data) {
     try {
       const [result] = await db.query(
-        `INSERT INTO slot_schedules SET ?`,
+       ` INSERT INTO slot_schedules SET ?`,
         data
       );
       return result;
@@ -17,19 +17,55 @@ class SlotSchedule {
   static async getAll() {
     try {
       const [results] = await db.query(
-        `SELECT * FROM slot_schedules ORDER BY created_at DESC`
+       ` SELECT * FROM slot_schedules ORDER BY created_at DESC`
       );
       return results;
     } catch (err) {
       throw err;
     }
   }
+  // Add this to your SlotSchedule class
+static async getCreatedBy(email) {
+  try {
+    const [results] = await db.query(
+      `SELECT * FROM slot_schedules WHERE created_email = ? ORDER BY start_datetime DESC`,
+      [email]
+    );
+    return results;
+  } catch (err) {
+    throw err;
+  }
+}
+// Add this to your SlotSchedule class
+static async getResponsesForSchedule(scheduleId) {
+  try {
+    const [responses] = await db.query(
+      `SELECT 
+        sb.slot_id as booking_id,
+        sb.student_email,
+        sb.booked_date,
+        sb.booked_time_slot,
+        sb.status,
+        sb.created_at as booking_created_at,
+        s.first_name as student_name,
+        s.year as student_year
+      FROM slot_bookings sb
+      JOIN students s ON sb.student_email = s.email
+      WHERE sb.slot_id = ?
+      ORDER BY sb.created_at DESC`,
+      [scheduleId]
+    );
+    return responses;
+  } catch (err) {
+    throw err;
+  }
+}
   // Add this method to slot_scheduleModel.js
 static async getSlotsForStudent(studentEmail) {
   try {
     // First get the student's year
     const [studentRows] = await db.query(
-      `SELECT year FROM students WHERE email = ?`,
+    `  SELECT year FROM students WHERE email = ?`,
       [studentEmail]
     );
     
@@ -46,7 +82,7 @@ static async getSlotsForStudent(studentEmail) {
       case 2: openToValue = '2nd Year'; break;
       case 3: openToValue = '3rd Year'; break;
       case 4: openToValue = 'Final Year'; break;
-      default: openToValue = `${studentYear} Year`;
+      default: openToValue =`${studentYear} Year`;
     }
     
     // Get all slots open to "All students" or the student's specific year

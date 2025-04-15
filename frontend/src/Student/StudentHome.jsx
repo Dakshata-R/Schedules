@@ -17,6 +17,8 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
+  TextField,
+  InputAdornment,
   Avatar
 } from "@mui/material";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
@@ -46,18 +48,26 @@ const eventTypeColors = {
   'Default': { border: '#9e9e9e', background: '#f5f5f5' }
 };
 
-// Helper function to get color based on event title
 const getEventColor = (title) => {
   if (!title) return eventTypeColors['Default'];
   
+  // Personal bookings
+  if (title.toLowerCase().includes('meeting')) return eventTypeColors['Meeting'];
+  if (title.toLowerCase().includes('consultation')) return eventTypeColors['Consultation'];
+  
+  // General slot bookings
+  if (title.toLowerCase().includes('training') || 
+      title.toLowerCase().includes('slot')) {
+    return { border: '#4CAF50', background: '#E8F5E9' };
+  }
+  
+  // Fallback to default colors
   const lowerTitle = title.toLowerCase();
-  if (lowerTitle.includes('meeting')) return eventTypeColors['Meeting'];
-  if (lowerTitle.includes('consultation')) return eventTypeColors['Consultation'];
   if (lowerTitle.includes('office hours')) return eventTypeColors['Office Hours'];
   if (lowerTitle.includes('review')) return eventTypeColors['Review'];
   if (lowerTitle.includes('discussion')) return eventTypeColors['Discussion'];
   
-  // Fallback: generate color based on title hash if not matched
+  // Fallback: generate color based on title hash
   const colors = [
     { border: '#3f51b5', background: '#e8eaf6' },
     { border: '#009688', background: '#e0f2f1' },
@@ -77,6 +87,11 @@ const getEventColor = (title) => {
 
 // Helper function for profile images
 const getProfileImage = (facultyName) => {
+  // Handle case where facultyName is an array
+  if (Array.isArray(facultyName)) {
+    facultyName = facultyName[0]?.name || 'F';
+  }
+  
   const names = facultyName?.split(' ') || ['F'];
   const initials = names.map(n => n[0]).join('').toUpperCase();
   const colors = [
@@ -92,7 +107,9 @@ function EventChip({ event }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
   const eventColor = getEventColor(event.title);
-
+  const startTime = new Date(event.start);
+  const endTime = new Date(event.end);
+  
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
@@ -159,17 +176,10 @@ function EventChip({ event }) {
               minute: '2-digit',
               timeZone: 'Asia/Kolkata' 
             })}
+            
           </Typography>
         </Box>
-        <Avatar 
-          src={getProfileImage(event.faculty)} 
-          alt={event.faculty}
-          sx={{ 
-            width: 32, // Reduced size
-            height: 32, // Reduced size
-            ml: 1 // Added margin to separate from text
-          }}
-        />
+       
       </Box>
 
       {/* Popover remains unchanged */}
@@ -217,32 +227,34 @@ function EventChip({ event }) {
               mt: 1
             }}>
               <CalendarTodayIcon fontSize="small" color="action" />
-              <Typography variant="body2">
-                {new Date(event.slotData.start).toLocaleDateString([], { 
-                  weekday: 'short', 
-                  month: 'short', 
-                  day: 'numeric' 
-                })}
-              </Typography>
+<Typography variant="body2">
+  {new Date(event.slotData?.start || event.start).toLocaleDateString([], { 
+    weekday: 'short', 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric'
+  })}
+</Typography>
+
               
               <AccessTimeIcon fontSize="small" color="action" />
-              <Typography variant="body2">
-                {new Date(event.slotData.start).toLocaleTimeString([], { 
-                  hour: '2-digit', 
-                  minute: '2-digit',
-                  timeZone: 'Asia/Kolkata'
-                })} - {new Date(event.slotData.end).toLocaleTimeString([], { 
-                  hour: '2-digit', 
-                  minute: '2-digit',
-                  timeZone: 'Asia/Kolkata'
-                })}
-              </Typography>
+              <Typography sx={{ fontSize: "12px", fontWeight: "500", color: "#9E9E9E" }}>
+  {new Date(event.start).toLocaleTimeString("en-IN", {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kolkata'
+  })} - 
+  {new Date(event.end).toLocaleTimeString("en-IN", {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kolkata'
+  })}
+</Typography>
+
               
-              <PersonIcon fontSize="small" color="action" />
-              <Typography variant="body2">{event.slotData.faculty}</Typography>
               
-              <LocationOnIcon fontSize="small" color="action" />
-              <Typography variant="body2">{event.slotData.location}</Typography>
             </Box>
 
             {event.slotData.requestDetails && (
@@ -254,25 +266,7 @@ function EventChip({ event }) {
                 borderRadius: '8px',
                 padding: '8px'
               }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>Student Details</Typography>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '24px 1fr', gap: '8px' }}>
-                  <PersonIcon fontSize="small" color="action" />
-                  <Typography variant="body2">{event.slotData.requestDetails.student_name}</Typography>
-                  
-                  {event.slotData.requestDetails.roll_number && (
-                    <>
-                      <BadgeIcon fontSize="small" color="action" />
-                      <Typography variant="body2">Roll: {event.slotData.requestDetails.roll_number}</Typography>
-                    </>
-                  )}
-                  
-                  {event.slotData.requestDetails.department && (
-                    <>
-                      <SchoolIcon fontSize="small" color="action" />
-                      <Typography variant="body2">Dept: {event.slotData.requestDetails.department}</Typography>
-                    </>
-                  )}
-                </Box>
+                
               </Box>
             )}
           </Box>
@@ -396,10 +390,15 @@ function TimelineView({ timeRange, date, bookedSlots, loadingSlots }) {
               const eventEndMinutes = eventEnd.getHours() * 60 + eventEnd.getMinutes();
               
               // Calculate position in pixels
-              const startPosition = ((eventStartMinutes - rangeStartMinutes) / totalMinutesInRange) * totalWidth;
               const endPosition = ((eventEndMinutes - rangeStartMinutes) / totalMinutesInRange) * totalWidth;
-              const width = endPosition - startPosition;
+              const pixelsPerMinute = columnWidth / 60;
 
+              const minutesSinceStart = ((eventStart.getHours() - startHour) * 60) + eventStart.getMinutes();
+              const eventDuration = (eventEnd - eventStart) / 60000;
+              
+              const startPosition = minutesSinceStart * pixelsPerMinute;
+              const width = eventDuration * pixelsPerMinute;
+              
               // Only render if the event is within our time range
               if (width <= 0 || startPosition >= totalWidth || endPosition <= 0) return null;
 
@@ -439,14 +438,23 @@ function TimelineView({ timeRange, date, bookedSlots, loadingSlots }) {
   );
 }
 function CalendarView({ calendarView, dateRange, bookedSlots, loadingSlots }) {
-  const calendarEvents = bookedSlots.map(slot => ({
-    date: new Date(slot.start).toISOString().split('T')[0],
+  const calendarEvents = bookedSlots.map(slot => {
+  const startDate = new Date(slot.start);
+  const date = startDate.toISOString().split('T')[0]; // ✅ Use local time
+
+  return {
+    date,
     title: slot.title,
     start: slot.start,
     end: slot.end,
     faculty: slot.faculty,
     slotData: slot
-  }));
+  };
+});
+
+    
+   
+  
 
   if (calendarView === "month") {
     const months = [];
@@ -568,12 +576,13 @@ function CalendarView({ calendarView, dateRange, bookedSlots, loadingSlots }) {
           </Box>
         );
       } else {
-        // Similar changes for week view
         const days = [];
         const currentDate = new Date(dateRange.startDate);
         
         while (currentDate <= dateRange.endDate) {
-          days.push(new Date(currentDate));
+          // Fix: Create date without time component to avoid timezone issues
+          days.push(new Date(currentDate)); // Keep local time
+
           currentDate.setDate(currentDate.getDate() + 1);
         }
     
@@ -584,7 +593,7 @@ function CalendarView({ calendarView, dateRange, bookedSlots, loadingSlots }) {
             boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)", 
             padding: "16px", 
             marginTop: "5px",
-            overflowX: 'auto' // Add horizontal scrolling if needed
+            overflowX: 'auto'
           }}>
             {loadingSlots ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -593,9 +602,10 @@ function CalendarView({ calendarView, dateRange, bookedSlots, loadingSlots }) {
             ) : (
               <Box sx={{ 
                 display: "grid", 
-                gridTemplateColumns: `60px repeat(${days.length}, minmax(120px, 1fr))`, // Reduced date column width
+                gridTemplateColumns: `60px repeat(${days.length}, minmax(120px, 1fr))`,
                 gap: "0px",
               }}>
+                {/* Week view header */}
                 <Box sx={{ 
                   fontWeight: "bold", 
                   textAlign: "center", 
@@ -619,14 +629,20 @@ function CalendarView({ calendarView, dateRange, bookedSlots, loadingSlots }) {
                       backgroundColor: "#f0f0f0",
                       borderRight: index !== days.length - 1 ? "1px solid #ddd" : "none",
                       borderBottom: "1px solid #ddd",
-                      minWidth: '120px' // Set minimum width for day headers
+                      minWidth: '120px'
                     }}>
-                    {day.toLocaleDateString("en-US", { weekday: 'short' })}-{day.getDate()}
+                   {day.toLocaleDateString("en-US", { weekday: 'short' })}-{day.getDate()}
+
                   </Box>
                 ))}
     
+                {/* Week view content */}
                 {days.map((day, dayIndex) => {
-                  const formattedDate = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+                  // Fix: Use UTC date to match the stored dates
+                  const formattedDate = day.toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
+
+
+                  
                   const dayEvents = calendarEvents.filter(event => event.date === formattedDate);
     
                   return (
@@ -640,7 +656,7 @@ function CalendarView({ calendarView, dateRange, bookedSlots, loadingSlots }) {
                         flexDirection: "column",
                         gap: "4px",
                         borderRight: dayIndex !== days.length - 1 ? "1px solid #ddd" : "none",
-                        minWidth: '120px' // Set minimum width for day cells
+                        minWidth: '120px'
                       }}
                     >
                       {dayEvents.map((event, idx) => (
@@ -655,9 +671,8 @@ function CalendarView({ calendarView, dateRange, bookedSlots, loadingSlots }) {
         );
       }
     }
-
-
 function StudentHome() {
+  const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState("timeline");
   const [timeRange, setTimeRange] = useState("8-20");
   const [calendarView, setCalendarView] = useState("month");
@@ -676,32 +691,156 @@ function StudentHome() {
     severity: "success"
   });
   const loggedInEmail = localStorage.getItem("userEmail");
-
+  const filteredBookedSlots = bookedSlots.filter(slot => {
+    if (!searchQuery) return true;
+    return slot.title.toLowerCase().includes(searchQuery.toLowerCase());
+  });
   useEffect(() => {
-    const fetchBookedSlots = async () => {
-      if (!loggedInEmail) return;
+  // In the fetchBookedSlots function, modify the API response processing:
+  const fetchBookedSlots = async () => {
+    if (!loggedInEmail) return;
+  
+    try {
+      setLoadingSlots(true);
+  
+      // ✅ 1. Fetch FA schedules for the student's department & year
+      const faSchedulesResponse = await axios.get(
+        `http://localhost:8000/api/fa-schedules/for-student/${loggedInEmail}`
+      );
+  
+      const faSchedules = (faSchedulesResponse.data.data || []).map(slot => {
+        const startDate = new Date(`${slot.slotData.start_date.split('T')[0]}T${slot.slotData.start_time}`);
+        const duration = parseInt(slot.slotData.duration);
+        const isHourUnit = slot.slotData.duration_unit === 'Hours';
+        const durationMs = isHourUnit ? duration * 60 * 60 * 1000 : duration * 60 * 1000;
+        const endDate = new Date(startDate.getTime() + durationMs);
       
-      try {
-        setLoadingSlots(true);
-        const response = await axios.get(
-          `http://localhost:8000/api/requests/booked-slots/${loggedInEmail}`
-        );
-        setBookedSlots(response.data);
-      } catch (error) {
-        console.error("Error fetching booked slots:", error);
-        setSnackbar({
-          open: true,
-          message: "Failed to load booked slots",
-          severity: "error"
-        });
-      } finally {
-        setLoadingSlots(false);
-      }
-    };
-
+        let venueName = 'Location not specified';
+        try {
+          const venues = Array.isArray(slot.slotData.venues) ? slot.slotData.venues : JSON.parse(slot.slotData.venues || '[]');
+          if (venues.length > 0) {
+            venueName = venues.map(v => v.name || v.venue_name).join(', ');
+          }
+        } catch (e) {}
+      
+        let facultyName = 'Faculty not specified';
+        try {
+          const faculties = Array.isArray(slot.slotData.faculties) ? slot.slotData.faculties : JSON.parse(slot.slotData.faculties || '[]');
+          if (faculties.length > 0) {
+            facultyName = faculties.map(f => f.name).join(', ');
+          }
+        } catch (e) {}
+      
+        return {
+          title: slot.title || slot.slotData.fa_type || 'FA Schedule',
+          start: startDate,
+          end: endDate,
+          faculty: facultyName,
+          location: venueName,
+          slotData: slot.slotData
+        };
+      });
+      
+  
+      // ✅ 2. Fetch student's personal booked slots
+      const studentResponse = await axios.get(
+        `http://localhost:8000/api/requests/booked-slots/${loggedInEmail}`
+      );
+  
+      // ✅ 3. Fetch all general slot bookings
+      const allBookingsResponse = await axios.get(
+        'http://localhost:8000/api/slot-bookings/all'
+      );
+  
+      // ✅ 4. Combine all three sources of data
+      const combinedSlots = [
+        // Personal bookings
+        ...(studentResponse.data || []).map(slot => {
+          const start = new Date(slot.start);
+          const end = new Date(slot.end);
+          return {
+            ...slot,
+            start: isNaN(start.getTime()) ? new Date() : start,
+            end: isNaN(end.getTime()) ? new Date() : end
+          };
+        }),
+  
+        // General slot bookings
+        ...(allBookingsResponse.data.data || []).map(booking => {
+          // Parse date/time
+          let startTime, endTime;
+          try {
+            const bookedDate = booking.booked_date ? getLocalDateString(booking.booked_date) : null;
+            startTime = booking.specific_start
+              ? new Date(booking.specific_start)
+              : parseDateTime(bookedDate, booking.booked_time_slot?.split(" - ")[0]);
+  
+            endTime = booking.specific_end
+              ? new Date(booking.specific_end)
+              : parseDateTime(bookedDate, booking.booked_time_slot?.split(" - ")[1]);
+          } catch (e) {
+            console.error("Invalid date in booking:", booking);
+            startTime = new Date();
+            endTime = new Date();
+          }
+  
+          // Parse faculty and venue info
+          let facultyData, venueData;
+          try {
+            facultyData = typeof booking.faculties === 'string'
+              ? JSON.parse(booking.faculties || '[]')
+              : booking.faculties || [];
+  
+            venueData = typeof booking.venues === 'string'
+              ? JSON.parse(booking.venues || '[]')
+              : booking.venues || [];
+          } catch (e) {
+            console.error("Error parsing faculty/venue data:", e);
+            facultyData = [];
+            venueData = [];
+          }
+  
+          const facultyName = facultyData.length > 0 ? facultyData[0].name : 'Faculty not specified';
+          const venueName = venueData.length > 0 ? venueData[0].name : 'Location not specified';
+  
+          return {
+            title: booking.template_name,
+            start: startTime,
+            end: endTime,
+            faculty: facultyName,
+            location: venueName,
+            slotData: {
+              ...booking,
+              faculty: facultyName,
+              location: venueName,
+              requestDetails: booking.student_email === loggedInEmail ? {
+                student_name: booking.student_email.split('@')[0],
+                roll_number: 'N/A',
+                department: 'N/A'
+              } : null
+            }
+          };
+        }),
+  
+        // ✅ FA Schedules
+        ...faSchedules
+      ];
+  
+      setBookedSlots(combinedSlots);
+    } catch (error) {
+      console.error("Error fetching booked slots:", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to load booked slots",
+        severity: "error"
+      });
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+  
     fetchBookedSlots();
   }, [loggedInEmail, dateRange, view, refreshKey]);
-
   const handleChange = (event, newValue) => {
     setView(newValue);
   };
@@ -776,15 +915,29 @@ function StudentHome() {
               />
             </Tabs>
           
-            <Box sx={{ display: "flex", alignItems: "center", gap: "1px"}}>
-              <IconButton sx={{ padding: "6px" }}>
-                <SearchIcon sx={{ fontSize: "21px", color: "#000" }} />
-              </IconButton>
-              <Typography variant="body2" sx={{ fontSize: "16px", color: "#000" }}>
-                Search
-              </Typography>
-            </Box>
-
+            <Box sx={{ display: "flex", alignItems: "center", gap: "20px",marginLeft:"200px"}}>
+  <TextField
+    variant="outlined"
+    size="small"
+    placeholder="Search by title..."
+    value={searchQuery}
+    onChange={(e) => setSearchQuery(e.target.value)}
+    sx={{ 
+      width: 200,
+      '& .MuiOutlinedInput-root': {
+        height: 36,
+        fontSize: '14px'
+      }
+    }}
+    InputProps={{
+      startAdornment: (
+        <InputAdornment position="start">
+          <SearchIcon sx={{ fontSize: "18px", color: "#757575" }} />
+        </InputAdornment>
+      ),
+    }}
+  />
+</Box>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <IconButton onClick={handleRefresh}>
                 <RefreshIcon />
@@ -902,20 +1055,21 @@ function StudentHome() {
         </Box>
 
         <Box sx={{ marginTop: "16px" }}>
-          {view === "timeline" ? (
-            <TimelineView 
-              timeRange={timeRange} 
-              date={dateRange.startDate} 
-              bookedSlots={bookedSlots}
-              loadingSlots={loadingSlots}
-            />
-          ) : (
-            <CalendarView 
-              calendarView={calendarView} 
-              dateRange={dateRange} 
-              bookedSlots={bookedSlots}
-              loadingSlots={loadingSlots}
-            />
+        {view === "timeline" ? (
+  <TimelineView 
+    timeRange={timeRange} 
+    date={dateRange.startDate} 
+    bookedSlots={filteredBookedSlots}
+    loadingSlots={loadingSlots}
+  />
+) : (
+  <CalendarView 
+    calendarView={calendarView} 
+    dateRange={dateRange} 
+    bookedSlots={filteredBookedSlots}
+    loadingSlots={loadingSlots}
+  />
+
           )}
         </Box>
 

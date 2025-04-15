@@ -27,6 +27,7 @@ import {
   FilterList,
 } from "@mui/icons-material";
 import { fetchSlotSchedules, deleteSlotSchedule } from "../../services/slotScheduleService";
+import { fetchFASchedules } from "../../services/faScheduleService";
 
 const SchedulesTable = ({ onNewButtonClick, onTemplateSelect }) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,14 +46,74 @@ const SchedulesTable = ({ onNewButtonClick, onTemplateSelect }) => {
     const loadSchedules = async () => {
       try {
         setLoading(true);
-        const data = await fetchSlotSchedules();
-        setSchedules(data);
+    
+        const [slotData, faData] = await Promise.all([
+          fetchSlotSchedules(),
+          fetchFASchedules()
+        ]);
+    
+        const formattedFA = faData.map(fa => ({
+          id: fa.id,
+          template_name: `${fa.fa_type || 'Schedule'}`,
+          priority: fa.priority,
+          
+          start_datetime: (() => {
+            if (fa.start_date) {
+              const iso = `${fa.start_date}`;
+              const d = new Date(iso);
+              
+              // Check if the date is valid
+              if (isNaN(d.getTime())) return "";
+        
+              // Return in ISO format, which will retain the correct time and timezone
+              return d.toISOString();  // Keep the date-time format in ISO (e.g., "2025-04-14T09:00:00.000Z")
+            }
+            return "";
+          })(),
+          
+          end_datetime: (() => {
+            if (fa.start_date && fa.duration) {
+              const startDate = new Date(fa.start_date);
+              let endDate = new Date(startDate); // Copy the start date
+        
+              // Calculate the duration in milliseconds based on the unit
+              const durationValue = parseFloat(fa.duration); // Assuming duration is a number
+              const durationUnit = fa.duration_unit.toLowerCase(); // Convert unit to lowercase for consistency
+        
+              if (durationUnit === 'hour' || durationUnit === 'hours') {
+                endDate.setHours(endDate.getHours() + durationValue);
+              } else if (durationUnit === 'minute' || durationUnit === 'minutes') {
+                endDate.setMinutes(endDate.getMinutes() + durationValue);
+              } else if (durationUnit === 'day' || durationUnit === 'days') {
+                endDate.setDate(endDate.getDate() + durationValue);
+              } else if (durationUnit === 'week' || durationUnit === 'weeks') {
+                endDate.setDate(endDate.getDate() + (durationValue * 7));
+              } else if (durationUnit === 'month' || durationUnit === 'months') {
+                endDate.setMonth(endDate.getMonth() + durationValue);
+              } else if (durationUnit === 'year' || durationUnit === 'years') {
+                endDate.setFullYear(endDate.getFullYear() + durationValue);
+              }
+        
+              return isNaN(endDate.getTime()) ? "" : endDate.toISOString();
+            }
+            return "";
+          })(),
+          
+          slot_duration: fa.duration,
+          duration_unit: fa.duration_unit,
+          open_to: `${fa.department} - Year ${fa.year}`
+        }));
+        
+    
+        const combined = [...slotData, ...formattedFA];
+        setSchedules(combined);
         setLoading(false);
       } catch (err) {
-        setError(err.message);
+        setError(err.message || "Failed to fetch schedules");
         setLoading(false);
       }
     };
+    
     loadSchedules();
   }, []);
 
@@ -120,10 +181,22 @@ const SchedulesTable = ({ onNewButtonClick, onTemplateSelect }) => {
 
   // Format date for display
   const formatDate = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  };
+  if (!dateString) return "N/A";
+
+  const date = new Date(dateString);
+
+  if (isNaN(date.getTime())) {
+    return "N/A";
+  }
+
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+};
+
+  
 
   if (loading) {
     return (

@@ -20,6 +20,18 @@ import {
   Avatar,
   Tooltip,
   InputAdornment,
+  useMediaQuery,
+  useTheme,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+  Chip as MuiChip,
+  TableContainer
 } from "@mui/material";
 import {
   Delete as DeleteIcon,
@@ -29,10 +41,15 @@ import {
   Search,
   FilterList,
   ArrowDropDown,
+  Close
 } from "@mui/icons-material";
 import RolesPop from "../RolesPage/rolespop";
 
 const Roles = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  
   const [isRolesPopOpen, setIsRolesPopOpen] = useState(false);
   const [roles, setRoles] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,10 +57,13 @@ const Roles = () => {
   const [filterCategory, setFilterCategory] = useState("");
   const [displayedRoles, setDisplayedRoles] = useState([]);
   const [editingRole, setEditingRole] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [roleToDelete, setRoleToDelete] = useState(null);
+  const [membersDialogOpen, setMembersDialogOpen] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage] = useState(7);
+  const [rowsPerPage] = useState(isMobile ? 5 : isTablet ? 7 : 10);
 
   // State for the three-dot menu
   const [anchorEl, setAnchorEl] = useState(null);
@@ -194,17 +214,25 @@ const Roles = () => {
     return colors[Math.floor(Math.random() * colors.length)];
   };
 
+  // Function to confirm and delete a role
+  const confirmDeleteRole = (role) => {
+    setRoleToDelete(role);
+    setDeleteDialogOpen(true);
+  };
+
   // Function to delete a role from the backend and frontend
-  const handleDeleteRole = async (roleId) => {
+  const handleDeleteRole = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/deleteRole/${roleId}`, {
+      const response = await fetch(`http://localhost:8000/api/deleteRole/${roleToDelete.id}`, {
         method: "DELETE",
       });
 
       if (response.ok) {
-        const updatedRoles = roles.filter((role) => role.id !== roleId);
+        const updatedRoles = roles.filter((role) => role.id !== roleToDelete.id);
         setRoles(updatedRoles);
         setDisplayedRoles(updatedRoles);
+        setDeleteDialogOpen(false);
+        setRoleToDelete(null);
       } else {
         console.error("Failed to delete role");
       }
@@ -225,44 +253,48 @@ const Roles = () => {
     });
   };
 
-  // Reusable Chip component
+  // Function to show all members in a dialog
+  const showAllMembers = (members) => {
+    setSelectedRoleMembers(members);
+    setMembersDialogOpen(true);
+  };
+
+  // Custom Chip component with responsive sizing
   const Chip = ({ label, color, backgroundColor }) => {
     return (
-      <Box
+      <MuiChip
+        label={label}
         sx={{
-          display: "inline-block",
-          padding: "4px 12px",
-          borderRadius: "12px",
-          backgroundColor: backgroundColor,
-          color: color,
+          backgroundColor,
+          color,
           fontWeight: "bold",
-          fontSize: "0.875rem",
+          fontSize: isMobile ? "0.75rem" : "0.875rem",
+          height: isMobile ? 24 : 32,
         }}
-      >
-        {label}
-      </Box>
+      />
     );
   };
 
   return (
     <Box
       sx={{
-        backgroundColor: "#f5f6fa",//#f5f6fa
+        backgroundColor: "#f5f6fa",
         minHeight: "100vh",
-        width: "72vw",
+        width: { xs: '100%', md: '72vw' },
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        marginTop: "30px",
+        marginTop: { xs: '16px', md: '30px' },
+        padding: { xs: '8px', sm: '16px', md: '0' },
       }}
     >
       <Paper
         sx={{
-          padding: "40px",
+          padding: { xs: '16px', sm: '24px', md: '40px' },
           borderRadius: "15px",
           boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
           position: "relative",
-          width: "94%",
+          width: "100%",
           minHeight: "300px",
         }}
       >
@@ -273,12 +305,14 @@ const Roles = () => {
           sx={{
             backgroundColor: "#4caf50",
             color: "white",
-            position: "absolute",
-            top: "20px",
-            right: "20px",
+            position: { xs: 'static', sm: 'absolute' },
+            top: { sm: "20px" },
+            right: { sm: "20px" },
             textTransform: "none",
             fontSize: "1rem",
-            padding: "5px 40px",
+            padding: "5px 20px",
+            marginBottom: { xs: '16px', sm: '0' },
+            width: { xs: '100%', sm: 'auto' },
             "&:hover": {
               backgroundColor: "green",
             },
@@ -289,7 +323,7 @@ const Roles = () => {
 
         {/* Roles List Heading with Role Count Chip */}
         <Box sx={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "20px" }}>
-          <Typography variant="h5" component="div">
+          <Typography variant={isMobile ? "h6" : "h5"} component="h1">
             Roles list
           </Typography>
           <Chip
@@ -299,14 +333,14 @@ const Roles = () => {
           />
         </Box>
 
-        <Typography variant="body1" sx={{ marginBottom: "50px" }}>
+        <Typography variant="body1" sx={{ marginBottom: { xs: '24px', md: '50px' } }}>
           Keep track of Roles and permissions
         </Typography>
 
         {/* Search and Filter Section */}
         <Grid container spacing={2} sx={{ marginBottom: "20px" }}>
           {/* View All Button and Category Filter on the Left */}
-          <Grid item xs={4} sx={{ display: "flex", gap: "10px" }}>
+          <Grid item xs={12} sm={6} md={4} sx={{ display: "flex", gap: "10px", flexDirection: isMobile ? 'column' : 'row' }}>
             <Button
               variant="contained"
               onClick={handleViewAll}
@@ -316,6 +350,7 @@ const Roles = () => {
                 textTransform: "none",
                 fontSize: "1rem",
                 padding: "10px 20px",
+                width: isMobile ? '100%' : 'auto',
                 "&:hover": {
                   backgroundColor: "#e0e0e0",
                 },
@@ -323,12 +358,13 @@ const Roles = () => {
             >
               View All
             </Button>
-            <FormControl sx={{ minWidth: 150 }}>
+            <FormControl sx={{ minWidth: 150, width: isMobile ? '100%' : 'auto' }}>
               <InputLabel>Category</InputLabel>
               <Select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
                 label="Category"
+                size={isMobile ? 'small' : 'medium'}
               >
                 <MenuItem value="">All</MenuItem>
                 <MenuItem value="Admin">Admin</MenuItem>
@@ -339,14 +375,14 @@ const Roles = () => {
           </Grid>
 
           {/* Search and Filter on the Right */}
-          <Grid item xs={8} sx={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+          <Grid item xs={12} sm={6} md={8} sx={{ display: "flex", gap: "10px", flexDirection: isMobile ? 'column' : 'row' }}>
             <TextField
               fullWidth
               variant="outlined"
               placeholder="Search roles..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              sx={{ maxWidth: "600px" }}
+              size={isMobile ? 'small' : 'medium'}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -355,17 +391,18 @@ const Roles = () => {
                 ),
               }}
             />
-            <FormControl sx={{ minWidth: 150 }}>
+            <FormControl sx={{ minWidth: 150, width: isMobile ? '100%' : 'auto' }}>
               <InputLabel>
                 <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <FilterList fontSize="small" />
-                  Filter
+                  {!isMobile && "Filter"}
                 </Box>
               </InputLabel>
               <Select
                 value={filterPriority}
                 onChange={(e) => setFilterPriority(e.target.value)}
                 label="Filter"
+                size={isMobile ? 'small' : 'medium'}
               >
                 <MenuItem value="">All</MenuItem>
                 <MenuItem value="High">High</MenuItem>
@@ -377,120 +414,157 @@ const Roles = () => {
         </Grid>
 
         {/* Display Roles in a Table */}
-        <Table sx={{ width: "100%", marginTop: "20px" }}>
-          <TableHead>
-            <TableRow>
-              <TableCell>Role Name</TableCell>
-              <TableCell>Priority</TableCell>
-              <TableCell>
-                Permissions <ArrowDropDown sx={{ verticalAlign: "middle" }} />
-              </TableCell>
-              <TableCell>Assigned Roles</TableCell>
-              <TableCell>Subpermissions</TableCell>
-              <TableCell align="right"></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {paginatedRoles.map((role) => {
-              const uniquePermissions = getUniquePermissions(role.permissions);
-              const displayedMembers = role.members.slice(0, 5);
-              const remainingMembersCount = role.members.length - 5;
+        <TableContainer sx={{ maxWidth: '100%', overflowX: 'auto' }}>
+          <Table sx={{ minWidth: 650 }} size={isMobile ? 'small' : 'medium'}>
+            <TableHead>
+              <TableRow>
+                <TableCell>Role Name</TableCell>
+                {!isMobile && <TableCell>Priority</TableCell>}
+                {!isMobile && (
+                  <TableCell>
+                    Permissions <ArrowDropDown sx={{ verticalAlign: "middle" }} />
+                  </TableCell>
+                )}
+                <TableCell>Members</TableCell>
+                {!isMobile && <TableCell>Actions</TableCell>}
+                <TableCell align="right"></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {paginatedRoles.length > 0 ? (
+                paginatedRoles.map((role) => {
+                  const uniquePermissions = getUniquePermissions(role.permissions);
+                  const displayedMembers = role.members.slice(0, isMobile ? 3 : 5);
+                  const remainingMembersCount = role.members.length - displayedMembers.length;
 
-              return (
-                <TableRow key={role.id}>
-                  <TableCell>
-                    <Chip
-                      label={role.roleName}
-                      backgroundColor={getRandomColor()}
-                      color="#000"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={role.priority}
-                      {...getPriorityStyles(role.priority)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <ul>
-                      {uniquePermissions.map((permission, index) => (
-                        <li key={index}>{permission.label}</li>
-                      ))}
-                    </ul>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: "flex", alignItems: "center" }}>
-                      {displayedMembers.map((member, index) => (
-                        <Tooltip key={index} title={member} arrow>
-                          <Avatar
-                            alt={member}
-                            src={`https://placehold.co/40?text=${member[0]}`}
-                            sx={{
-                              width: 40,
-                              height: 40,
-                              marginLeft: index !== 0 ? "-10px" : "0px",
-                              border: "2px solid white",
-                            }}
+                  return (
+                    <TableRow key={role.id}>
+                      <TableCell>
+                        <Chip
+                          label={role.roleName}
+                          backgroundColor={getRandomColor()}
+                          color="#000"
+                        />
+                      </TableCell>
+                      {!isMobile && (
+                        <TableCell>
+                          <Chip
+                            label={role.priority}
+                            {...getPriorityStyles(role.priority)}
                           />
-                        </Tooltip>
-                      ))}
-                      {remainingMembersCount > 0 && (
-                        <Tooltip
-                          title={`${remainingMembersCount} more members`}
-                          arrow
-                        >
-                          <Avatar
-                            sx={{
-                              width: 40,
-                              height: 40,
-                              marginLeft: "-10px",
-                              backgroundColor: "skyblue",
-                              color: "blue",
-                              border: "2px solid white",
-                            }}
-                          >
-                            +{remainingMembersCount}
-                          </Avatar>
-                        </Tooltip>
+                        </TableCell>
                       )}
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: "flex", gap: "8px" }}>
-                      <IconButton
-                        aria-label="download"
-                        onClick={() => handleDownloadRole(role)}
-                      >
-                        <CloudDownloadIcon />
-                      </IconButton>
-                      <IconButton
-                        aria-label="delete"
-                        onClick={() => handleDeleteRole(role.id)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                      <IconButton
-                        aria-label="edit"
-                        onClick={() => handleEditRole(role)}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    </Box>
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton
-                      aria-label="more"
-                      onClick={(e) => handleThreeDotClick(e, role.members)}
-                      sx={{ color: "blue" }}
-                    >
-                      <MoreVertIcon />
-                    </IconButton>
+                      {!isMobile && (
+                        <TableCell>
+                          <Box sx={{ maxHeight: '100px', overflowY: 'auto' }}>
+                            {uniquePermissions.slice(0, 3).map((permission, index) => (
+                              <Typography key={index} variant="body2">
+                                • {permission.label}
+                              </Typography>
+                            ))}
+                            {uniquePermissions.length > 3 && (
+                              <Typography variant="body2" color="text.secondary">
+                                +{uniquePermissions.length - 3} more
+                              </Typography>
+                            )}
+                          </Box>
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        <Box sx={{ display: "flex", alignItems: "center" }}>
+                          {displayedMembers.map((member, index) => (
+                            <Tooltip key={index} title={member} arrow>
+                              <Avatar
+                                alt={member}
+                                src={`https://placehold.co/40?text=${member[0]}`}
+                                sx={{
+                                  width: { xs: 32, sm: 40 },
+                                  height: { xs: 32, sm: 40 },
+                                  marginLeft: index !== 0 ? "-10px" : "0px",
+                                  border: "2px solid white",
+                                }}
+                              />
+                            </Tooltip>
+                          ))}
+                          {remainingMembersCount > 0 && (
+                            <Tooltip
+                              title={`${remainingMembersCount} more members`}
+                              arrow
+                            >
+                              <Avatar
+                                onClick={() => showAllMembers(role.members)}
+                                sx={{
+                                  width: { xs: 32, sm: 40 },
+                                  height: { xs: 32, sm: 40 },
+                                  marginLeft: "-10px",
+                                  backgroundColor: "skyblue",
+                                  color: "blue",
+                                  border: "2px solid white",
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                +{remainingMembersCount}
+                              </Avatar>
+                            </Tooltip>
+                          )}
+                        </Box>
+                      </TableCell>
+                      {!isMobile && (
+                        <TableCell>
+                          <Box sx={{ display: "flex", gap: "8px" }}>
+                            <Tooltip title="Download">
+                              <IconButton
+                                aria-label="download"
+                                onClick={() => handleDownloadRole(role)}
+                                size="small"
+                              >
+                                <CloudDownloadIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Delete">
+                              <IconButton
+                                aria-label="delete"
+                                onClick={() => confirmDeleteRole(role)}
+                                size="small"
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Edit">
+                              <IconButton
+                                aria-label="edit"
+                                onClick={() => handleEditRole(role)}
+                                size="small"
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </TableCell>
+                      )}
+                      <TableCell align="right">
+                        <IconButton
+                          aria-label="more"
+                          onClick={(e) => handleThreeDotClick(e, role.members)}
+                          sx={{ color: "blue" }}
+                          size="small"
+                        >
+                          <MoreVertIcon fontSize={isMobile ? "small" : "medium"} />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    No roles found
                   </TableCell>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
 
         {/* Pagination Controls */}
         <Box
@@ -501,6 +575,8 @@ const Roles = () => {
             marginTop: "20px",
             padding: "10px",
             borderTop: "1px solid #e0e0e0",
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: isMobile ? 2 : 0
           }}
         >
           {/* Page Number Display on the Left */}
@@ -514,10 +590,10 @@ const Roles = () => {
               display: "flex",
               alignItems: "center",
               gap: "8px",
-              backgroundColor: "white", // Light grey background
-              borderRadius: "8px", // Rounded corners
-              padding: "8px 16px", // Padding inside the container
-              boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)", // Subtle shadow
+              backgroundColor: "white",
+              borderRadius: "8px",
+              padding: "8px 16px",
+              boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
             }}
           >
             <Button
@@ -526,7 +602,7 @@ const Roles = () => {
               sx={{
                 color: "grey",
                 textTransform: "none",
-                minWidth: "auto", // Remove extra width
+                minWidth: "auto",
                 "&:disabled": {
                   color: "#e0e0e0",
                 },
@@ -536,11 +612,11 @@ const Roles = () => {
             </Button>
             <Button
               onClick={handleNextPage}
-              disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages || totalPages === 0}
               sx={{
                 color: "grey",
                 textTransform: "none",
-                minWidth: "auto", // Remove extra width
+                minWidth: "auto",
                 "&:disabled": {
                   color: "#e0e0e0",
                 },
@@ -560,11 +636,83 @@ const Roles = () => {
         />
       )}
 
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete the role "{roleToDelete?.roleName}"?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={handleDeleteRole} 
+            color="error"
+            variant="contained"
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Members Dialog */}
+      <Dialog
+        open={membersDialogOpen}
+        onClose={() => setMembersDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          All Members
+          <IconButton
+            aria-label="close"
+            onClick={() => setMembersDialogOpen(false)}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              color: (theme) => theme.palette.grey[500],
+            }}
+          >
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <List>
+            {selectedRoleMembers.map((member, index) => (
+              <React.Fragment key={index}>
+                <ListItem>
+                  <Avatar 
+                    alt={member} 
+                    src={`https://placehold.co/40?text=${member[0]}`}
+                    sx={{ mr: 2 }}
+                  />
+                  <ListItemText primary={member} />
+                </ListItem>
+                {index < selectedRoleMembers.length - 1 && <Divider />}
+              </React.Fragment>
+            ))}
+          </List>
+        </DialogContent>
+      </Dialog>
+
       {/* Menu for displaying members */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
+        PaperProps={{
+          style: {
+            maxHeight: 200,
+            width: '20ch',
+          },
+        }}
       >
         {selectedRoleMembers.map((member, index) => (
           <MenuItem key={index}>{member}</MenuItem>

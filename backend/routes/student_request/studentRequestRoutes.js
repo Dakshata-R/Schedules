@@ -18,5 +18,6 @@ router.get('/', studentRequestController.getAllRequests);
 router.delete('/:id', studentRequestController.deleteRequest);
 // Update request status
 router.put('/:id/status', studentRequestController.updateRequestStatus);
-
+// Get faculty schedule
+router.get('/faculty/schedule/:email', studentRequestController.getFacultySchedule);
 module.exports = router;

@@ -15,7 +15,7 @@ const createAcademicDetails = (req, res) => {
         school_medium: req.body.school_medium,
         department: req.body.department,
         semester_grade: req.body.semester_grade,
-        uploaded_file: uploadedFilePath // 👈 Save the file path
+        uploaded_file: uploadedFilePath //  Save the file path
     };
 
     AcademicModel.create(formData, (err, result) => {

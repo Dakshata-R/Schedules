@@ -17,57 +17,33 @@ import AddFacility from './addfacility';
 import AddUser from './adduser';
 
 const FacilityType = ({ errors, setFacilityData, facilityData }) => {
-  // State for accessibility options (stored as roles in DB)
-  const [accessibilityOptions, setAccessibilityOptions] = useState(
-    facilityData.accessibilityOptions || []
-  );
   const [inputValue, setInputValue] = useState('');
-
-  // State for facilities
+  const [facilityInputValue, setFacilityInputValue] = useState('');
   const [facilities, setFacilities] = useState(
     facilityData.facilities || ['Chairs', 'Guest chair', 'Charging ports', 'Mic', 'Table']
   );
-  const [facilityInputValue, setFacilityInputValue] = useState('');
-
-  // State for selected facilities
   const [selectedFacilities, setSelectedFacilities] = useState(
     facilityData.selectedFacilities || []
   );
-
-  // State for selected users
-  const [selectedUsers, setSelectedUsers] = useState(facilityData.selectedUsers || []);
-
-  // State for popups
+  const [assignedUsers, setAssignedUsers] = useState(facilityData.assignedUsers || []);
   const [isAddFacilityOpen, setIsAddFacilityOpen] = useState(false);
   const [isExtraFacilityOpen, setIsExtraFacilityOpen] = useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
 
-  // Update parent component's state whenever local state changes
   useEffect(() => {
     setFacilityData({
-      accessibilityOptions,
       facilities,
-      selectedFacilities: selectedFacilities,
-      selectedUsers,
+      selectedFacilities,
+      assignedUsers,
     });
-  }, [accessibilityOptions, facilities, selectedFacilities, selectedUsers]);
+  }, [facilities, selectedFacilities, assignedUsers]);
 
-  // Handle adding a new accessibility option
   const handleAddAccessibility = () => {
     if (inputValue.trim() !== '') {
-      setAccessibilityOptions([...accessibilityOptions, inputValue.trim()]);
       setInputValue('');
     }
   };
 
-  // Handle deleting an accessibility option
-  const handleDeleteAccessibility = (index) => {
-    const updatedOptions = [...accessibilityOptions];
-    updatedOptions.splice(index, 1);
-    setAccessibilityOptions(updatedOptions);
-  };
-
-  // Handle adding a new facility
   const handleAddFacility = (facilityName) => {
     if (Array.isArray(facilityName)) {
       setSelectedFacilities([...selectedFacilities, ...facilityName]);
@@ -76,38 +52,23 @@ const FacilityType = ({ errors, setFacilityData, facilityData }) => {
     }
   };
 
-  // Handle deleting a facility
   const handleDeleteFacility = (index) => {
     const updatedFacilities = [...facilities];
     updatedFacilities.splice(index, 1);
     setFacilities(updatedFacilities);
   };
 
-  // Handle deleting a selected facility
   const handleDeleteSelectedFacility = (index) => {
     const updatedSelectedFacilities = [...selectedFacilities];
     updatedSelectedFacilities.splice(index, 1);
     setSelectedFacilities(updatedSelectedFacilities);
   };
 
-  // Handle adding a new user
   const handleAddUser = (users) => {
     const newUsers = Array.isArray(users) ? users : [users];
-    setSelectedUsers([...selectedUsers, ...newUsers]);
-    
-    // Also add role names to accessibility options
-    const newRoles = newUsers.map(user => user.roleName);
-    setAccessibilityOptions([...accessibilityOptions, ...newRoles]);
+    setAssignedUsers([...assignedUsers, ...newUsers]);
   };
 
-  // Handle deleting a user
-  const handleDeleteUser = (index) => {
-    const updatedUsers = [...selectedUsers];
-    updatedUsers.splice(index, 1);
-    setSelectedUsers(updatedUsers);
-  };
-
-  // Handle pressing Enter in accessibility input
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       handleAddAccessibility();
@@ -135,14 +96,18 @@ const FacilityType = ({ errors, setFacilityData, facilityData }) => {
           {/* Accessibility Section */}
           <Box sx={{ marginBottom: '20px' }}>
             <Typography variant="h6" sx={{ fontWeight: 'bold', marginBottom: '10px' }}>
-              Accessibility
+              Access to
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              {accessibilityOptions.map((option, index) => (
+              {assignedUsers.map((user, index) => (
                 <Chip
                   key={index}
-                  label={option}
-                  onDelete={() => handleDeleteAccessibility(index)}
+                  label={`${user.first_name} (${user.faculty_level})`}
+                  onDelete={() => {
+                    const updatedUsers = [...assignedUsers];
+                    updatedUsers.splice(index, 1);
+                    setAssignedUsers(updatedUsers);
+                  }}
                   sx={{
                     backgroundColor: '#ecfdf5',
                     color: '#059669',
@@ -152,7 +117,7 @@ const FacilityType = ({ errors, setFacilityData, facilityData }) => {
               ))}
               <TextField
                 size="small"
-                placeholder="Add accessibility"
+                placeholder="Add user"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -167,7 +132,7 @@ const FacilityType = ({ errors, setFacilityData, facilityData }) => {
                       <Button
                         variant="outlined"
                         startIcon={<Add />}
-                        onClick={handleAddAccessibility}
+                        onClick={() => setIsAddUserOpen(true)}
                         sx={{ textTransform: 'none', borderColor: 'white', color: 'gray' }}
                       >
                         Add
@@ -240,8 +205,6 @@ const FacilityType = ({ errors, setFacilityData, facilityData }) => {
               </Typography>
             )}
           </Box>
-
-        
         </Grid>
 
         {/* Right Grid (Selected Facilities) */}

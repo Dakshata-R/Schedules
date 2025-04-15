@@ -10,6 +10,29 @@ class StudentCategory {
       throw error;
     }
   }
+
+  static async getStudentCountByYear(year) {
+    try {
+      let query;
+      let params = [];
+      
+      if (year === 'All students') {
+        query = 'SELECT COUNT(*) as count FROM students';
+      } else {
+        const yearNum = parseInt(year);
+        if (isNaN(yearNum)) {
+          throw new Error('Invalid year parameter');
+        }
+        query = 'SELECT COUNT(*) as count FROM students WHERE year = ?';
+        params = [yearNum];
+      }
+      
+      const [rows] = await pool.query(query, params);
+      return rows[0].count;
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = StudentCategory;

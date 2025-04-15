@@ -1,4 +1,5 @@
 const Slot = require('../models/Slot');
+const db = require('../config/db');
 
 exports.createSlot = async (req, res) => {
   try {
@@ -88,5 +89,63 @@ exports.getRequestsWithSlots = async (req, res) => {
   } catch (error) {
     console.error('Error fetching requests with slots:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+};
+exports.getFacultySlotsByEmail = async (req, res) => {
+  const { email } = req.params;
+
+  try {
+    // 1. First get the faculty member's details
+    const [facultyRows] = await db.query(
+      `SELECT id, CONCAT(first_name) AS full_name 
+       FROM faculty 
+       WHERE email = ?`,
+      [email]
+    );
+
+    if (!facultyRows.length) {
+      return res.status(404).json({ error: 'Faculty not found' });
+    }
+
+    const facultyId = facultyRows[0].id;
+    const facultyName = facultyRows[0].full_name;
+
+    // 2. Get all slots assigned to this faculty (without date filtering)
+    const [slots] = await db.query(
+      `SELECT 
+        s.id,
+        s.skill_name AS template_name,
+        s.faculty_incharge,
+        DATE_FORMAT(s.start_date, '%Y-%m-%d') AS booked_date,
+        CONCAT(TIME_FORMAT(s.from_time, '%H:%i'), ' - ', TIME_FORMAT(s.to_time, '%H:%i')) AS booked_time_slot,
+        s.location AS venue_name,
+        GROUP_CONCAT(DISTINCT ss.student_email) AS students,
+        JSON_ARRAYAGG(
+  JSON_OBJECT(
+    'email', ss.student_email,
+    'name', (SELECT CONCAT(first_name) FROM students WHERE email = ss.student_email)
+  )
+) AS student_details
+
+      FROM slots s
+      LEFT JOIN slot_students ss ON s.id = ss.slot_id
+      WHERE s.faculty_incharge = ? 
+      GROUP BY s.id
+      ORDER BY s.start_date, s.from_time`,
+      [facultyName, facultyId]
+    );
+
+    // 3. Format the response
+    const formattedSlots = slots.map(slot => ({
+      ...slot,
+      students: slot.students ? slot.students.split(',') : [],
+      student_details: slot.student_details || []
+    }));
+    
+
+    res.json(formattedSlots);
+  } catch (err) {
+    console.error('Error fetching faculty slots:', err);
+    res.status(500).json({ error: 'Failed to fetch faculty slots' });
   }
 };

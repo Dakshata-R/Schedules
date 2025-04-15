@@ -18,7 +18,10 @@ import FaPreview from "../preview/FaPreview";
 import axios from "axios";
 
 const FaTemplate = ({ onCancel }) => {
-  const [venues, setVenues] = useState([]);
+  const [studentCount, setStudentCount] = useState(0);
+  const [venueLoading, setVenueLoading] = useState(false);
+const [venueError, setVenueError] = useState(null);
+const [venues, setVenues] = useState([]);
   const [faType, setFaType] = useState("Academic FA");
   const [priority, setPriority] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -38,83 +41,118 @@ const FaTemplate = ({ onCancel }) => {
   const [venuePopupOpen, setVenuePopupOpen] = useState(false);
   const [facultyPopupOpen, setFacultyPopupOpen] = useState(false);
   const [selectedVenues, setSelectedVenues] = useState([]);
+  const [venueValidation, setVenueValidation] = useState({
+    showWarning: false,
+    message: ""
+  });
+  
   const [selectedFaculties, setSelectedFaculties] = useState([]);
   const [dateError, setDateError] = useState("");
   const [filteredCourses, setFilteredCourses] = useState([]); // State for filtered courses
   const [successMessage, setSuccessMessage] = useState("");
   const [courseLoading, setCourseLoading] = useState(false);
   const [courseError, setCourseError] = useState(null);
+  const getDateTimeRange = () => {
+    if (!startDate || !startTime || !duration) return { startDateTime: null, endDateTime: null };
+  
+    const startDateTimeStr = `${startDate}T${startTime}:00+05:30`;
+    const startDateTime = new Date(startDateTimeStr); // ✅ Convert to Date object
+    const durationInMinutes = durationUnit === "Hours" ? duration * 60 : parseInt(duration);
+    const endDateTime = new Date(startDateTime.getTime() + durationInMinutes * 60000);
+  
+    return {
+      startDateTime: startDateTime.toISOString(),
+      endDateTime: endDateTime.toISOString()
+    };
+  };
+  
    // Replace the existing fetchData useEffect with this:
-    useEffect(() => {
-      const fetchData = async () => {
-        try {
-          // Fetch venues
-          // In the fetchData useEffect
-          const venuesResponse = await axios.get("http://localhost:8000/api/venues");
-          const normalizedVenues = venuesResponse.data.map(venue => ({
-            venue_id: venue.id,
-            venue_name: venue.name,
-            // other properties
-          }));
-          setVenues(normalizedVenues || []);
-
-          // Fetch years and departments from students table
-          try {
-            const yearsDeptsResponse = await axios.get("http://localhost:8000/api/students/years-departments");
-            const data = yearsDeptsResponse.data || [];
-            
-            // Extract unique years and departments
-            const uniqueYears = [...new Set(data.map(item => item.year))].sort();
-            const uniqueDepartments = [...new Set(data.map(item => item.department))].sort();
-
-            setYears(uniqueYears);
-            setDepartments(uniqueDepartments);
-          } catch (yearsDeptsError) {
-            console.error("Error fetching years/departments:", yearsDeptsError);
-            // Fallback to empty arrays if there's an error
-            setYears([]);
-            setDepartments([]);
-          }
-
-        } catch (error) {
-          console.error("Error fetching data:", error);
-          setVenues([]);
-          setYears([]);
-          setDepartments([]);
-        }
-      };
-
-      fetchData();
-    }, []); 
-
-    useEffect(() => {
-      if (!year || !department) {
-        setFilteredCourses([]);
-        return;
+   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setVenueLoading(true);
+        // Fetch venues
+        const venuesResponse = await axios.get("http://localhost:8000/api/venues");
+        const normalizedVenues = venuesResponse.data.map(venue => ({
+          id: venue.venue_id,
+          name: venue.venue_name,
+          capacity: venue.capacity,
+          type: venue.type || 'Seminar Hall'
+        }));
+        setVenues(normalizedVenues || []);
+        
+        // Fetch years and departments
+        const yearsDeptsResponse = await axios.get("http://localhost:8000/api/students/years-departments");
+        const data = yearsDeptsResponse.data || [];
+        
+        const uniqueYears = [...new Set(data.map(item => item.year))].sort();
+        const uniqueDepartments = [...new Set(data.map(item => item.department))].sort();
+  
+        setYears(uniqueYears);
+        setDepartments(uniqueDepartments);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setVenueError('Failed to load venues');
+        setVenues([]);
+        setYears([]);
+        setDepartments([]);
+      } finally {
+        setVenueLoading(false);
       }
-    
-      const fetchCourses = async () => {
-        setCourseLoading(true);
-        setCourseError(null);
+    };
+  
+    fetchData();
+  }, []);
+  useEffect(() => {
+    const validateVenueCapacity = () => {
+      if (!year || !department || selectedVenues.length === 0) return;
+  
+      const fetchStudentCount = async () => {
         try {
-          const response = await axios.get(`http://localhost:8000/api/courses`, {
-            params: {
-              year: year,
-              department: department
-            }
-          });
-          setFilteredCourses(response.data);
+          const response = await axios.get("http://localhost:8000/api/students/years-departments");
+          const students = response.data;
+  
+          // Count students for the selected year and department
+          const count = students.filter(
+            s => s.year === parseInt(year) && s.department === department
+          ).length;
+  
+          setStudentCount(count);
+  
+          const totalCapacity = selectedVenues.reduce((sum, venue) => sum + venue.capacity, 0);
+  
+          if (count === 0) {
+            setVenueValidation({ showWarning: false, message: "" });
+            return;
+          }
+  
+          if (totalCapacity < count) {
+            setVenueValidation({
+              showWarning: true,
+              message:
+                "We recommend you to either choose a larger venue or combine venues to ensure everyone is comfortably accommodated."
+            });
+          } else if (totalCapacity > count + 3) {
+            setVenueValidation({
+              showWarning: true,
+              message: "We recommend selecting a more appropriately sized venue."
+            });
+          } else {
+            setVenueValidation({ showWarning: false, message: "" });
+          }
         } catch (error) {
-          console.error("Error fetching courses:", error);
-          setCourseError("Failed to load courses");
-          setFilteredCourses([]);
-        } finally {
-          setCourseLoading(false);
+          console.error("Error validating venue capacity:", error);
         }
       };
-    
-      fetchCourses();
-    }, [year, department]);
+  
+      fetchStudentCount();
+    };
+  
+    validateVenueCapacity();
+  }, [selectedVenues, year, department]);
+  
+  
+  
 
   // Handle FA type change
   const handleFaTypeChange = (event) => {
@@ -141,33 +179,59 @@ const FaTemplate = ({ onCancel }) => {
   // Calculate end time based on start time and duration
   const calculateEndTime = () => {
     if (!startTime || !duration) return "";
-
-    const start = new Date(`01/01/2000 ${startTime} GMT+0530`);
+  
+    const start = new Date(`01/01/2000 ${startTime} GMT+0530`); // 👈 define start
     const durationInMinutes = durationUnit === "Hours" ? duration * 60 : duration;
     const end = new Date(start.getTime() + durationInMinutes * 60000);
+  
     const endTimeIST = end.toLocaleTimeString("en-IN", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
       timeZone: "Asia/Kolkata",
     });
-
+  
     return endTimeIST;
   };
+  
 
   const endTime = calculateEndTime();
 
   useEffect(() => {
     calculateEndTime();
   }, [startTime, duration, durationUnit]);
-
+  useEffect(() => {
+    if (!year || !department) {
+      setFilteredCourses([]);
+      return;
+    }
+  
+    const fetchCourses = async () => {
+      setCourseLoading(true);
+      setCourseError(null);
+      try {
+        const response = await axios.get(`http://localhost:8000/api/courses`, {
+          params: { year, department }
+        });
+  
+        console.log("Fetched courses:", response.data); // Debug
+        setFilteredCourses(response.data);
+      } catch (error) {
+        console.error("Error fetching courses:", error);
+        setCourseError("Failed to load courses");
+        setFilteredCourses([]);
+      } finally {
+        setCourseLoading(false);
+      }
+    };
+  
+    fetchCourses();
+  }, [year, department]); // ✅ Added department
+  
+  
   // In FaTemplate.jsx's handleVenueSelection:
   const handleVenueSelection = (selectedVenues = []) => {
-    const normalizedVenues = selectedVenues.map(venue => ({
-      venue_id: venue.id, // or venue.venue_id if that's what comes from the API
-      venue_name: venue.name, // or venue.venue_name
-    }));
-    setSelectedVenues(normalizedVenues);
+    setSelectedVenues(selectedVenues);
     setVenuePopupOpen(false);
   };
   // Handle faculty selection from popup
@@ -175,11 +239,61 @@ const FaTemplate = ({ onCancel }) => {
     setSelectedFaculties(selectedFaculties || []);
     setFacultyPopupOpen(false);
   };
+  const startDateTime = startDate && startTime
+  ? new Date(`${startDate}T${startTime}`).toISOString()
+  : null;
+
+const durationInMinutes = durationUnit === "Hours" ? duration * 60 : duration;
+const endDateTime = startDate && startTime && duration
+  ? new Date(new Date(`${startDate}T${startTime}`).getTime() + durationInMinutes * 60000).toISOString()
+  : null;
 
   useEffect(() => {
     console.log("Selected Venues:", selectedVenues);
   }, [selectedVenues]);
-
+  useEffect(() => {
+    const validateVenueCapacity = () => {
+      if (!year || !department || selectedVenues.length === 0) return;
+  
+      const fetchStudentCount = async () => {
+        try {
+          const response = await axios.get(
+            `http://localhost:8000/api/student-categories/students-by-year-dept`,
+            { params: { year, department } }
+          );
+  
+          const studentCount = response.data.count || 0;
+          const totalCapacity = selectedVenues.reduce((sum, venue) => sum + venue.capacity, 0);
+  
+          if (studentCount === 0) {
+            setVenueValidation({ showWarning: false, message: "" });
+            return;
+          }
+  
+          if (totalCapacity < studentCount) {
+            setVenueValidation({
+              showWarning: true,
+              message: "We recommend you to either choose a larger venue or combine venues to ensure everyone is comfortably accommodated."
+            });
+          } else if (totalCapacity > studentCount + 3) {
+            setVenueValidation({
+              showWarning: true,
+              message: "We recommend selecting a more appropriately sized venue."
+            });
+          } else {
+            setVenueValidation({ showWarning: false, message: "" });
+          }
+        } catch (error) {
+          console.error("Error validating venue capacity:", error);
+        }
+      };
+  
+      fetchStudentCount();
+    };
+  
+    validateVenueCapacity();
+  }, [selectedVenues, year, department]);
+  
 
   return (
     <Box>
@@ -543,8 +657,9 @@ const FaTemplate = ({ onCancel }) => {
             <TextField
               fullWidth
               placeholder="Venue"
-              value={selectedVenues.map((venue) => venue.venue_name).join(", ")}
-              sx={{
+value={selectedVenues.map((venue) => venue.name).join(", ")}
+
+sx={{
                 backgroundColor: "#f8f9fa",
                 borderRadius: 1,
               }}
@@ -580,6 +695,25 @@ const FaTemplate = ({ onCancel }) => {
               }}
             />
             </Box>
+            {venueValidation.showWarning && (
+      <Typography 
+        variant="caption" 
+        sx={{ 
+          color: "red",
+          display: "block",
+          mt: 1,
+          fontStyle: "italic"
+        }}
+      >
+        {venueValidation.message}
+      </Typography>
+    )}
+   {selectedVenues.length > 0 && (
+  <Typography variant="caption" sx={{ display: "block", mt: 1 }}>
+    Total capacity: {selectedVenues.reduce((sum, v) => sum + v.capacity, 0)} | 
+    Attendees: {studentCount}
+  </Typography>
+)}
 
             {/* Faculty */}
             <Typography variant="body1" sx={{ mb: 1, mt: 2 }}>
@@ -630,11 +764,16 @@ const FaTemplate = ({ onCancel }) => {
         )}
 
         {/* Add Venue Popup */}
-        <Add_venue_popup
-          open={venuePopupOpen}
-          onClose={handleVenueSelection}
-          venues={venues} // Pass the actual venues data we fetched
-        />
+       
+        // Update the Add_venue_popup component usage in the return statement
+<Add_venue_popup
+  open={venuePopupOpen}
+  onClose={handleVenueSelection}
+  initiallySelectedVenues={selectedVenues}
+  startDateTime={getDateTimeRange().startDateTime}
+  endDateTime={getDateTimeRange().endDateTime}
+/>
+
 
         {/* Add Faculty Popup */}
         <Add_Faculty_popup
@@ -664,23 +803,7 @@ const FaTemplate = ({ onCancel }) => {
             Cancel
           </Button>
 
-          <Button
-            variant="outlined"
-            sx={{
-              color: "red",
-              borderColor: "red",
-              "&:hover": {
-                borderColor: "red",
-                backgroundColor: "rgba(255, 0, 0, 0.04)",
-              },
-              borderRadius: 2,
-              textTransform: "none",
-              padding: "8px 24px",
-              height: "36px",
-            }}
-          >
-            Create Draft
-          </Button>
+       
 
           <Button
             variant="contained"
